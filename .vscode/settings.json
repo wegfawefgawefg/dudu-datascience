@@ -1,0 +1,7 @@
+{
+  "files.associations": {
+    "*.dd": "dudu"
+  },
+  "dudu.path": "/home/vega/.local/bin/dudu",
+  "dudu.lspPath": "/home/vega/.local/bin/dudu-lsp"
+}

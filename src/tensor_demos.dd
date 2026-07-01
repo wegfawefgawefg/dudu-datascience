@@ -1,0 +1,185 @@
+from print_utils import section
+from print_utils import show_f32
+from print_utils import show_i32
+
+
+class Mask:
+    data: list[bool]
+
+    @operator("[]")
+    def at(self, index: i32) -> bool:
+        return self.data[index]
+
+    def count_true(self) -> i32:
+        count = 0
+        i = 0
+        total = i32(len(self.data))
+        while i < total:
+            if self[i]:
+                count += 1
+            i += 1
+        return count
+
+
+class Tensor:
+    rows: i32
+    cols: i32
+    data: list[f32]
+
+    @operator("[]")
+    def at(self, row: i32, col: i32) -> f32:
+        return self.data[(row * self.cols) + col]
+
+    @operator("[]=")
+    def set_at(self, row: i32, col: i32, value: f32):
+        self.data[(row * self.cols) + col] = value
+
+    @operator("[]")
+    def masked_rows(self, mask: Mask, cols: slice) -> Tensor:
+        col_start = 0
+        if cols.has_start:
+            col_start = i32(cols.start)
+        col_stop = self.cols
+        if cols.has_end:
+            col_stop = i32(cols.end)
+        out_rows = mask.count_true()
+        out_cols = col_stop - col_start
+        data: list[f32] = []
+        i = 0
+        while i < out_rows * out_cols:
+            data.append(0.0)
+            i += 1
+        out = Tensor(out_rows, out_cols, data)
+        out_row = 0
+        row = 0
+        while row < self.rows:
+            if mask[row]:
+                col = 0
+                while col < out.cols:
+                    out[out_row, col] = self[row, col_start + col]
+                    col += 1
+                out_row += 1
+            row += 1
+        return out
+
+    @operator("[]=")
+    def set_masked_rows(self, mask: Mask, cols: slice, value: Tensor):
+        value_row = 0
+        row = 0
+        while row < self.rows:
+            if mask[row]:
+                col = 0
+                col_start = 0
+                if cols.has_start:
+                    col_start = i32(cols.start)
+                while col < value.cols:
+                    self[row, col_start + col] = value[value_row, col]
+                    col += 1
+                value_row += 1
+            row += 1
+
+
+def slice_start(value: slice) -> i32:
+    if value.has_start:
+        return i32(value.start)
+    return 0
+
+
+def slice_end(value: slice, limit: i32) -> i32:
+    if value.has_end:
+        return i32(value.end)
+    return limit
+
+
+def slice_step(value: slice) -> i32:
+    if value.has_step:
+        return i32(value.step)
+    return 1
+
+
+def slice_count(value: slice, limit: i32) -> i32:
+    start = slice_start(value)
+    stop = slice_end(value, limit)
+    step = slice_step(value)
+    if stop <= start:
+        return 0
+    return ((stop - start) + step - 1) / step
+
+
+def zeros(rows: i32, cols: i32) -> Tensor:
+    data: list[f32] = []
+    i = 0
+    while i < rows * cols:
+        data.append(0.0)
+        i += 1
+    return Tensor(rows, cols, data)
+
+
+def from_4x2() -> Tensor:
+    out = zeros(4, 2)
+    out[0, 0] = 1.0
+    out[0, 1] = 2.0
+    out[1, 0] = 3.0
+    out[1, 1] = 4.0
+    out[2, 0] = 5.0
+    out[2, 1] = 6.0
+    out[3, 0] = 7.0
+    out[3, 1] = 8.0
+    return out
+
+
+def row_sum_mask(input: Tensor, threshold: f32) -> Mask:
+    data: list[bool] = []
+    row = 0
+    while row < input.rows:
+        total: f32 = 0.0
+        col = 0
+        while col < input.cols:
+            total += input[row, col]
+            col += 1
+        data.append(total > threshold)
+        row += 1
+    return Mask(data)
+
+
+def scale(input: Tensor, factor: f32) -> Tensor:
+    out = zeros(input.rows, input.cols)
+    row = 0
+    while row < input.rows:
+        col = 0
+        while col < input.cols:
+            out[row, col] = input[row, col] * factor
+            col += 1
+        row += 1
+    return out
+
+
+def sum_values(input: Tensor) -> f32:
+    total: f32 = 0.0
+    row = 0
+    while row < input.rows:
+        col = 0
+        while col < input.cols:
+            total += input[row, col]
+            col += 1
+        row += 1
+    return total
+
+
+def masked_rows_demo() -> i32:
+    section("boolean row mask: tensor[mask, :]")
+    values = from_4x2()
+    mask = row_sum_mask(values, 8.0)
+    selected = values[mask, :]
+    before = sum_values(selected)
+    values[mask, :] = scale(selected, 2.0)
+    after = values[2, 0] + values[2, 1] + values[3, 0] + values[3, 1]
+
+    show_i32("mask.count_true()", 2, mask.count_true())
+    show_f32("sum selected rows [[5, 6], [7, 8]]", 26.0, before)
+    show_f32("sum after masked scatter with selected * 2", 52.0, after)
+    return i32(before + after - 36.0)
+
+
+def run_tensor_demos() -> i32:
+    return masked_rows_demo()

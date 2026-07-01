@@ -1,0 +1,104 @@
+from print_utils import section
+from print_utils import show_i32
+
+
+class TinyTensor:
+    values: array[i32][6]
+
+    @operator("[]")
+    def at(self, index: i32) -> i32:
+        return self.values[index]
+
+    @operator("[]=")
+    def set_at(self, index: i32, value: i32):
+        self.values[index] = value
+
+
+class PairwiseTensor:
+    rows: i32
+    cols: i32
+    data: list[i32]
+
+    @operator("[]")
+    def at(self, row: i32, col: i32) -> i32:
+        return self.data[(row * self.cols) + col]
+
+    @operator("[]=")
+    def set_at(self, row: i32, col: i32, value: i32):
+        self.data[(row * self.cols) + col] = value
+
+    @operator("vindex[]")
+    def pairwise(self, rows: array[i32][2], cols: array[i32][2]) -> i32:
+        return self[rows[0], cols[0]] + self[rows[1], cols[1]]
+
+    @operator("vindex[]=")
+    def set_pairwise(self, rows: array[i32][2], cols: array[i32][2], value: i32):
+        self[rows[0], cols[0]] = value
+        self[rows[1], cols[1]] = value
+
+    @operator("oindex[]")
+    def cartesian(self, rows: array[i32][2], cols: array[i32][2]) -> i32:
+        return (
+            self[rows[0], cols[0]]
+            + self[rows[0], cols[1]]
+            + self[rows[1], cols[0]]
+            + self[rows[1], cols[1]]
+        )
+
+    @operator("oindex[]=")
+    def set_cartesian(self, rows: array[i32][2], cols: array[i32][2], value: i32):
+        self[rows[0], cols[0]] = value
+        self[rows[0], cols[1]] = value
+        self[rows[1], cols[0]] = value
+        self[rows[1], cols[1]] = value
+
+
+def scalar_hook_demo() -> i32:
+    section("library scalar index hook: tensor[i]")
+    storage: array[i32] = [2, 4, 6, 8, 10, 12]
+    tensor = TinyTensor(storage)
+    tensor[3] = tensor[3] + tensor[0]
+
+    show_i32("tensor[3] after tensor[3] += tensor[0]", 10, tensor[3])
+    show_i32("tensor[5]", 12, tensor[5])
+    return tensor[3] + tensor[5]
+
+
+def pairwise_index_demo() -> i32:
+    section("pairwise gather hook: tensor.vindex[rows, cols]")
+    data: list[i32] = [1, 2, 3, 4]
+    tensor = PairwiseTensor(2, 2, data)
+    rows: array[i32] = [0, 1]
+    cols: array[i32] = [1, 0]
+
+    before = tensor.vindex[rows, cols]
+    tensor.vindex[rows, cols] = 10
+    after = tensor.vindex[rows, cols]
+
+    show_i32("before pairwise sum tensor[0,1] + tensor[1,0]", 5, before)
+    show_i32("after pairwise set to 10", 20, after)
+    return before + after
+
+
+def orthogonal_index_demo() -> i32:
+    section("orthogonal gather hook: tensor.oindex[rows, cols]")
+    data: list[i32] = [1, 2, 3, 4]
+    tensor = PairwiseTensor(2, 2, data)
+    rows: array[i32] = [0, 1]
+    cols: array[i32] = [0, 1]
+
+    before = tensor.oindex[rows, cols]
+    tensor.oindex[rows, cols] = 8
+    after = tensor.oindex[rows, cols]
+
+    show_i32("before cartesian sum of 2x2 grid", 10, before)
+    show_i32("after setting cartesian grid to 8", 32, after)
+    return before + after
+
+
+def run_hook_demos() -> i32:
+    score = 0
+    score += scalar_hook_demo()
+    score += pairwise_index_demo()
+    score += orthogonal_index_demo()
+    return score

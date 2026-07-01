@@ -1,0 +1,8 @@
+name = "dudu-datascience"
+entry = "src/main.dd"
+
+[cxx]
+standard = "c++20"
+
+[build]
+dir = "build"

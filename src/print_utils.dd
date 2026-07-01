@@ -1,0 +1,19 @@
+def section(title: str):
+    print("--")
+    print(title)
+
+
+def show_i32(label: str, expected: i32, got: i32):
+    print(label)
+    print("expected")
+    print(expected)
+    print("got")
+    print(got)
+
+
+def show_f32(label: str, expected: f32, got: f32):
+    print(label)
+    print("expected")
+    print(expected)
+    print("got")
+    print(got)

@@ -1,0 +1,22 @@
+from array_demos import run_array_demos
+from hook_demos import run_hook_demos
+from print_utils import section
+from print_utils import show_i32
+from tensor_demos import run_tensor_demos
+
+
+def main() -> i32:
+    section("dudu data science indexing tour")
+    array_score = run_array_demos()
+    hook_score = run_hook_demos()
+    tensor_score = run_tensor_demos()
+    total = array_score + hook_score + tensor_score
+
+    section("summary")
+    show_i32("array demo score", 4627, array_score)
+    show_i32("hook demo score", 89, hook_score)
+    show_i32("tensor demo score", 42, tensor_score)
+    show_i32("total score", 4758, total)
+    if total != 4758:
+        return 1
+    return 0
