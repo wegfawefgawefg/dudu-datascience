@@ -1,5 +1,6 @@
 from c import cblas.h as blas
 from c import math.h
+from cpp.path import dudu_tensor/index_native.hpp as index_native
 from cpp.path import dudu_tensor/opencl_native.hpp as opencl_native
 from dudu_tensor.backends import CpuDevice
 from dudu_tensor.backends import OpenBlasDevice
@@ -104,25 +105,6 @@ def index4(a: i32, b: i32, c: i32, d: i32) -> list[i32]:
     return values
 
 
-def flags2(a: bool, b: bool) -> list[bool]:
-    values: list[bool] = []
-    values.append(a)
-    values.append(b)
-    return values
-
-
-def flags3(a: bool, b: bool, c: bool) -> list[bool]:
-    values = flags2(a, b)
-    values.append(c)
-    return values
-
-
-def flags4(a: bool, b: bool, c: bool, d: bool) -> list[bool]:
-    values = flags3(a, b, c)
-    values.append(d)
-    return values
-
-
 def contiguous_strides(shape: list[i32]) -> list[i32]:
     strides: list[i32] = []
     i = 0
@@ -161,39 +143,6 @@ def offset_from_flat(base: i32, shape: list[i32], strides: list[i32], flat: i32)
         out += coord * strides[axis]
         axis -= 1
     return out
-
-
-def slice_view[T](
-    data: *list[T],
-    base_offset: i32,
-    base_shape: list[i32],
-    base_strides: list[i32],
-    is_index: list[bool],
-    indices: list[i32],
-    starts: list[i32],
-    counts: list[i32],
-    steps: list[i32],
-) -> TensorView[T]:
-    out_shape: list[i32] = []
-    out_strides: list[i32] = []
-    out_offset = base_offset
-    axis = 0
-    slice_axis = 0
-    while axis < i32(len(is_index)):
-        if is_index[axis]:
-            out_offset += indices[axis] * base_strides[axis]
-        else:
-            out_offset += starts[slice_axis] * base_strides[axis]
-            out_shape.append(counts[slice_axis])
-            out_strides.append(base_strides[axis] * steps[slice_axis])
-            slice_axis += 1
-        axis += 1
-
-    while axis < i32(len(base_shape)):
-        out_shape.append(base_shape[axis])
-        out_strides.append(base_strides[axis])
-        axis += 1
-    return TensorView[T](data, out_offset, out_shape, out_strides)
 
 
 class CartesianIndexer[T]:
@@ -306,6 +255,14 @@ class TensorView[T]:
     def set_at4(self, a: i32, b: i32, c: i32, d: i32, value: T):
         (*self.data)[offset_for_indices(self.offset, self.strides, index4(a, b, c, d))] = value
 
+    @operator("[]")
+    def view_at(self, *idx: basic_index) -> TensorView[T]:
+        plan = cpp("ddtensor::index_plan(self.shape, self.strides, self.offset, idx...)")
+        shape: list[i32] = cpp("plan.shape")
+        strides: list[i32] = cpp("plan.strides")
+        offset: i32 = cpp("plan.offset")
+        return TensorView[T](self.data, offset, shape, strides)
+
     def fill(self, value: T):
         i = 0
         while i < self.count():
@@ -337,9 +294,17 @@ class OpenClTensor:
     shape: list[i32]
 
     @operator("[]")
-    def row_view(self, row: i32, cols: slice) -> OpenClTensor:
-        handle: usize = cpp("reinterpret_cast<std::uintptr_t>(dd_opencl::row_slice(reinterpret_cast<dd_opencl::DeviceTensor*>(self.handle), row))")
-        return OpenClTensor(handle, 1, self.cols, index1(self.cols))
+    def view_at(self, *idx: basic_index) -> OpenClTensor:
+        strides = contiguous_strides(self.shape)
+        plan = cpp("ddtensor::index_plan(self.shape, strides, 0, idx...)")
+        handle: usize = cpp("reinterpret_cast<std::uintptr_t>(dd_opencl::gather_view(reinterpret_cast<dd_opencl::DeviceTensor*>(self.handle), plan))")
+        shape: list[i32] = cpp("plan.shape")
+        rows = 1
+        cols = shape_total(shape)
+        if i32(len(shape)) >= 2:
+            rows = shape[0]
+            cols = shape[1]
+        return OpenClTensor(handle, rows, cols, shape)
 
     def matmul(self, right: OpenClTensor) -> OpenClTensor:
         handle: usize = cpp("reinterpret_cast<std::uintptr_t>(dd_opencl::matmul(reinterpret_cast<dd_opencl::DeviceTensor*>(self.handle), reinterpret_cast<dd_opencl::DeviceTensor*>(right.handle)))")
@@ -428,74 +393,12 @@ class Tensor[T]:
         self.data[offset_for_indices(self.offset, self.strides, index4(a, b, c, d))] = value
 
     @operator("[]")
-    def row_view(self, row: i32, cols: slice) -> TensorView[T]:
-        return slice_view[T](
-            &self.data,
-            self.offset,
-            self.shape,
-            self.strides,
-            flags2(True, False),
-            index2(row, 0),
-            index1(slice_start(cols)),
-            index1(slice_count(cols, self.dim(1))),
-            index1(slice_step(cols)),
-        )
-
-    @operator("[]")
-    def column_view(self, rows: slice, col: i32) -> TensorView[T]:
-        return slice_view[T](
-            &self.data,
-            self.offset,
-            self.shape,
-            self.strides,
-            flags2(False, True),
-            index2(0, col),
-            index1(slice_start(rows)),
-            index1(slice_count(rows, self.dim(0))),
-            index1(slice_step(rows)),
-        )
-
-    @operator("[]")
-    def patch_view(self, rows: slice, cols: slice) -> TensorView[T]:
-        return slice_view[T](
-            &self.data,
-            self.offset,
-            self.shape,
-            self.strides,
-            flags2(False, False),
-            index2(0, 0),
-            index2(slice_start(rows), slice_start(cols)),
-            index2(slice_count(rows, self.dim(0)), slice_count(cols, self.dim(1))),
-            index2(slice_step(rows), slice_step(cols)),
-        )
-
-    @operator("[]")
-    def channel_view(self, a: slice, b: slice, c: i32) -> TensorView[T]:
-        return slice_view[T](
-            &self.data,
-            self.offset,
-            self.shape,
-            self.strides,
-            flags3(False, False, True),
-            index3(0, 0, c),
-            index2(slice_start(a), slice_start(b)),
-            index2(slice_count(a, self.dim(0)), slice_count(b, self.dim(1))),
-            index2(slice_step(a), slice_step(b)),
-        )
-
-    @operator("[]")
-    def slab_view(self, a: slice, b: i32, c: slice, d: i32) -> TensorView[T]:
-        return slice_view[T](
-            &self.data,
-            self.offset,
-            self.shape,
-            self.strides,
-            flags4(False, True, False, True),
-            index4(0, b, 0, d),
-            index2(slice_start(a), slice_start(c)),
-            index2(slice_count(a, self.dim(0)), slice_count(c, self.dim(2))),
-            index2(slice_step(a), slice_step(c)),
-        )
+    def view_at(self, *idx: basic_index) -> TensorView[T]:
+        plan = cpp("ddtensor::index_plan(self.shape, self.strides, self.offset, idx...)")
+        shape: list[i32] = cpp("plan.shape")
+        strides: list[i32] = cpp("plan.strides")
+        offset: i32 = cpp("plan.offset")
+        return TensorView[T](&self.data, offset, shape, strides)
 
     @operator("[]")
     def masked_rows(self, mask: Mask, cols: slice) -> Tensor[T]:

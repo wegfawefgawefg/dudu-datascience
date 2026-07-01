@@ -76,7 +76,8 @@ boundaries.
 
 - `host_tensor.to(opencl.default())` uploads CPU tensor storage
 - `gpu_tensor.matmul(other_gpu_tensor)` runs an OpenCL kernel
-- `gpu_tensor[0, :]` stays on device and preserves rank metadata
+- `gpu_tensor[0, :]` uses the same index-plan path as CPU views and stays on
+  device
 - `gpu_tensor.cpu()` explicitly downloads back into a Dudu tensor
 
 `src/backend_surface_demo.dd` shows the target backend boundary shape:
@@ -109,7 +110,8 @@ slice into reusable `dudu_tensor` code:
 - `Tensor` and `TensorView` carry `shape`, `strides`, and `offset`
 - rank-3 view: `image[:, :, 1]`
 - rank-4 view: `hyper[:, 1, :, 0]`
-- `rows` and `cols` remain rank-2 conveniences over the metadata
+- old row/column/patch-specific view helpers are replaced by one
+  rank-independent index-plan path
 
 `src/activation_metrics_demo.dd` graduates the first activation/loss target
 slice:

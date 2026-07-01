@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+#include "dudu_tensor/index_native.hpp"
+
 namespace dd_opencl {
 
 struct Runtime {
@@ -135,29 +137,52 @@ inline DeviceTensor* matmul(DeviceTensor* left, DeviceTensor* right) {
     return out;
 }
 
-inline DeviceTensor* row_slice(DeviceTensor* input, int row) {
-    if (row < 0 || row >= input->rows) {
-        throw std::runtime_error("OpenCL row slice out of range");
+inline DeviceTensor* gather_view(DeviceTensor* input, const ddtensor::IndexPlan& plan) {
+    if (plan.shape.empty()) {
+        throw std::runtime_error("OpenCL scalar indexing is not a tensor view");
+    }
+    if (plan.shape.size() > 2) {
+        throw std::runtime_error("OpenCL target demo supports rank-1/rank-2 gathered views");
     }
 
-    DeviceTensor* out = make_empty(1, input->cols);
+    const int out_rows = plan.shape.size() == 1 ? 1 : plan.shape[0];
+    const int out_cols = plan.shape.size() == 1 ? plan.shape[0] : plan.shape[1];
+    DeviceTensor* out = make_empty(out_rows, out_cols);
+
+    const int rank = static_cast<int>(plan.shape.size());
+    const int shape0 = rank >= 1 ? plan.shape[0] : 1;
+    const int shape1 = rank >= 2 ? plan.shape[1] : 1;
+    const int stride0 = rank >= 1 ? plan.strides[0] : 0;
+    const int stride1 = rank >= 2 ? plan.strides[1] : 0;
+    const int total = out_rows * out_cols;
+
     const char* source =
-        "__kernel void row_slice(const int row, const int cols, "
+        "__kernel void gather_view(const int rank, const int shape0, const int shape1, "
+        "const int stride0, const int stride1, const int offset, const int total, "
         "__global const float* input, __global float* out) { "
-        "int col = get_global_id(0); if (col >= cols) return; "
-        "out[col] = input[row * cols + col]; }";
+        "int flat = get_global_id(0); if (flat >= total) return; "
+        "int source_index = offset; "
+        "if (rank == 1) { source_index += flat * stride0; } "
+        "else { int row = flat / shape1; int col = flat - row * shape1; "
+        "source_index += row * stride0 + col * stride1; } "
+        "out[flat] = input[source_index]; }";
     cl_program program = build_program(source);
 
     cl_int err{};
-    cl_kernel kernel = clCreateKernel(program, "row_slice", &err);
+    cl_kernel kernel = clCreateKernel(program, "gather_view", &err);
     check(err, "clCreateKernel");
 
-    check(clSetKernelArg(kernel, 0, sizeof(int), &row), "clSetKernelArg row");
-    check(clSetKernelArg(kernel, 1, sizeof(int), &input->cols), "clSetKernelArg cols");
-    check(clSetKernelArg(kernel, 2, sizeof(cl_mem), &input->buffer), "clSetKernelArg input");
-    check(clSetKernelArg(kernel, 3, sizeof(cl_mem), &out->buffer), "clSetKernelArg out");
+    check(clSetKernelArg(kernel, 0, sizeof(int), &rank), "clSetKernelArg rank");
+    check(clSetKernelArg(kernel, 1, sizeof(int), &shape0), "clSetKernelArg shape0");
+    check(clSetKernelArg(kernel, 2, sizeof(int), &shape1), "clSetKernelArg shape1");
+    check(clSetKernelArg(kernel, 3, sizeof(int), &stride0), "clSetKernelArg stride0");
+    check(clSetKernelArg(kernel, 4, sizeof(int), &stride1), "clSetKernelArg stride1");
+    check(clSetKernelArg(kernel, 5, sizeof(int), &plan.offset), "clSetKernelArg offset");
+    check(clSetKernelArg(kernel, 6, sizeof(int), &total), "clSetKernelArg total");
+    check(clSetKernelArg(kernel, 7, sizeof(cl_mem), &input->buffer), "clSetKernelArg input");
+    check(clSetKernelArg(kernel, 8, sizeof(cl_mem), &out->buffer), "clSetKernelArg out");
 
-    const std::size_t global[1] = {static_cast<std::size_t>(input->cols)};
+    const std::size_t global[1] = {static_cast<std::size_t>(total)};
     check(clEnqueueNDRangeKernel(runtime().queue, kernel, 1, nullptr, global, nullptr, 0, nullptr,
                                  nullptr),
           "clEnqueueNDRangeKernel");

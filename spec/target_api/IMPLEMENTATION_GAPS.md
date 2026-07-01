@@ -18,6 +18,8 @@ The current module provides:
   and rank-independent `dim(axis)` / `count()` helpers
 - `TensorView[T]` borrowing CPU storage with runtime `shape`, `strides`, and
   `offset`, plus the same dimension/count helpers
+- one rank-independent CPU view planner for scalar/slice/ellipsis/new-axis
+  index items, shared by `Tensor` and `TensorView`
 - `zeros`, `ones`, `full`, `arange`, `randn`
 - `from_list`, `from_nested`
 - `assert_close`, `print_tensor`
@@ -30,8 +32,8 @@ The remaining target API still needs:
 
 - `Tensor[T][shape]` owning CPU storage
 - `TensorView[T][shape]` borrowing storage
-- more complete rank 1, 2, 3, and 4 indexing/slicing coverage through the same
-  implementation path
+- broader assignment and advanced-index combinations through the same index
+  planner
 - broader reductions and metrics needed by examples
 - cleaner extension-module boundaries so importing the CPU tensor surface does
   not force every target to link the OpenCL helper
@@ -152,7 +154,7 @@ and exercises `from dudu_tensor.backends import cpu`,
 opencl`, `tensor.to(cpu.default())`, `tensor.to(openblas.default())`,
 `tensor.to(opencl.default())`, and `tensor.cpu()`. CPU/OpenBLAS movement
 preserves CPU storage. OpenCL movement creates device buffers, runs matmul and
-row-slice kernels, and requires explicit `.cpu()` download.
+plan-based gathered view kernels, and requires explicit `.cpu()` download.
 
 `src/blas_backend_demo.dd` graduates the smallest BLAS/backend target surface
 into a runnable check: target-style backend imports, explicit
@@ -161,9 +163,11 @@ tensor/view/scalar values, and `cpu()`/`as_array_view()`/`to_array()`
 boundaries.
 
 `src/target_gpu_backend.dd` graduates the smallest OpenCL target surface into a
-runnable check: explicit CPU-to-device transfer, device matmul, device row
-indexing without implicit CPU copies, explicit download, and comparison against
-the CPU tensor result.
+runnable check: explicit CPU-to-device transfer, device matmul, device indexing
+through the shared index planner without implicit CPU copies, explicit download,
+and comparison against the CPU tensor result. The current OpenCL dogfood backend
+materializes rank-1/rank-2 gathered views into new contiguous device buffers;
+that is a backend limitation, not a compiler tensor rule.
 
 User code should move values with PyTorch-like device calls such as
 `tensor.to(opencl.default())` and `tensor.cpu()`. Backend selection is library
