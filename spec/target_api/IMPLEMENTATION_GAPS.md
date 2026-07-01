@@ -101,13 +101,11 @@ OpenBLAS should call CBLAS through normal native imports. OpenCL should own
 device buffers, kernels, upload/download, and cleanup through normal Dudu/C++
 RAII boundaries. CUDA/cuBLAS is not required on this AMD machine.
 
-The runnable slice now has backend marker types in `dudu_tensor.backends` and
-exercises `tensor.to(cpu.default())`, `tensor.to(openblas.default())`, and
-`tensor.cpu()`. Current Dudu does not support lowercase module-level singleton
-exports, so runnable code imports `CpuBackend as cpu` and `OpenBlasBackend as
-openblas`; the target `from dudu_tensor.backends import cpu` spelling remains
-an ergonomics goal. Backend movement currently preserves CPU storage; real
-device ownership and dispatch are library work.
+The runnable slice now has backend marker singletons in `dudu_tensor.backends`
+and exercises `from dudu_tensor.backends import cpu`,
+`from dudu_tensor.backends import openblas`, `tensor.to(cpu.default())`,
+`tensor.to(openblas.default())`, and `tensor.cpu()`. Backend movement currently
+preserves CPU storage; real device ownership and dispatch are library work.
 
 User code should move values with PyTorch-like device calls such as
 `tensor.to(opencl.default())` and `tensor.cpu()`. Backend selection is library

@@ -14,3 +14,7 @@ class CpuBackend:
 class OpenBlasBackend:
     def default() -> OpenBlasDevice:
         return OpenBlasDevice(1)
+
+
+cpu: CpuBackend = CpuBackend()
+openblas: OpenBlasBackend = OpenBlasBackend()

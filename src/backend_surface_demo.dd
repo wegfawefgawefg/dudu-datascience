@@ -4,8 +4,8 @@ from dudu_tensor import assert_close
 from dudu_tensor import assert_tensor_close
 from dudu_tensor import matmul_openblas
 from dudu_tensor import ones
-from dudu_tensor.backends import CpuBackend as cpu
-from dudu_tensor.backends import OpenBlasBackend as openblas
+from dudu_tensor.backends import cpu
+from dudu_tensor.backends import openblas
 from print_utils import section
 from print_utils import show_f32
 

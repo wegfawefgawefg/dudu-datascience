@@ -57,7 +57,8 @@ dudu run --timings
 
 `src/backend_surface_demo.dd` shows the target backend boundary shape:
 
-- backend marker imports with `CpuBackend as cpu` and `OpenBlasBackend as openblas`
+- backend marker imports with `from dudu_tensor.backends import cpu`
+  and `from dudu_tensor.backends import openblas`
 - `tensor.to(cpu.default())`, `tensor.to(openblas.default())`, and `tensor.cpu()`
 - explicit `as_array_view()` and `to_array()` materialization boundaries
 
