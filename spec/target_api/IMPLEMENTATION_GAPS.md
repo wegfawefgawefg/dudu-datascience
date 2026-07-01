@@ -22,7 +22,8 @@ The current module provides:
 - `from_list`, `from_nested`
 - `assert_close`, `print_tensor`
 - `index_array`, `bool_mask`
-- `vindex`, `oindex`, and `window` library indexer fields
+- direct pairwise advanced indexing, explicit `cartesian`, and `window`
+  library indexer fields
 - `relu`, `sigmoid`, `mse_loss`, `binary_accuracy`
 
 The remaining target API still needs:
@@ -88,8 +89,8 @@ layout, allocation, and backend behavior stay in library code.
 
 These are library fields/objects, not compiler forms:
 
-- `tensor.vindex[rows, cols]`
-- `tensor.oindex[rows, cols]`
+- `tensor[rows, cols]`
+- `tensor.cartesian[rows, cols]`
 - `tensor.window[height, width][row, col]`
 - `sparse.coo[rows, cols]`
 
@@ -102,8 +103,8 @@ Required semantics:
 - repeated-index scatter order is library policy
 
 Runnable status: `src/advanced_indexing_demo.dd` now covers reusable
-`index_array`, `bool_mask`, `tensor.vindex[rows, cols]` pairwise
-gather/scatter, `tensor.oindex[rows, cols]` cartesian gather, and
+`index_array`, `bool_mask`, `tensor[rows, cols]` pairwise gather/scatter,
+`tensor.cartesian[rows, cols]` cartesian gather, and
 `tensor[mask, :]` selection/scatter. It also covers reusable window tiles with
 both `tiles = tensor.window[height, width]; tiles[row, col]` and direct
 chained `tensor.window[height, width][row, col]` indexing. Sparse COO indexers

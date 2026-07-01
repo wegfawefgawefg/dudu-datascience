@@ -13,19 +13,19 @@ def main() -> i32:
     rows = index_array([0, 2, 3])
     cols = index_array([1, 4, 0])
 
-    # Pairwise gather/scatter. vindex is a library field returning an indexer.
-    pairwise = logits.vindex[rows, cols]
+    # Pairwise gather/scatter follows PyTorch-style direct advanced indexing.
+    pairwise = logits[rows, cols]
     print_tensor("pairwise", pairwise)
     pairwise_expected: Tensor[f32][3] = from_list[f32]([1.0, 14.0, 15.0])
     assert_close(pairwise, pairwise_expected)
 
-    logits.vindex[rows, cols] = from_list[f32]([100.0, 200.0, 300.0])
+    logits[rows, cols] = from_list[f32]([100.0, 200.0, 300.0])
     assert_close(logits[0, 1], 100.0)
     assert_close(logits[2, 4], 200.0)
     assert_close(logits[3, 0], 300.0)
 
     # Orthogonal/cartesian indexing is explicit and library-owned.
-    grid = logits.oindex[rows, cols]
+    grid = logits.cartesian[rows, cols]
     expected_grid: Tensor[f32][3, 3] = from_nested[f32]([
         [100.0, 4.0, 0.0],
         [11.0, 200.0, 10.0],

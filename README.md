@@ -41,9 +41,10 @@ dudu run --timings
 `src/hook_demos.dd` shows library-defined indexing:
 
 - scalar hooks: `tensor[i]`
-- pairwise gather/scatter through an indexer object: `tensor.vindex[rows, cols]`
-- orthogonal/cartesian gather/scatter through an indexer object: `tensor.oindex[rows, cols]`
-- no compiler-owned `vindex[]` or `oindex[]` operators are required
+- pairwise gather/scatter through normal direct indexing: `tensor[rows, cols]`
+- orthogonal/cartesian gather through an explicit helper object:
+  `tensor.cartesian[rows, cols]`
+- no compiler-owned tensor indexing operators are required
 
 `src/tensor_demos.dd` shows a tiny tensor-like type:
 
@@ -75,8 +76,8 @@ runnable check:
 slice into reusable `dudu_tensor` code:
 
 - `index_array([...])` and `bool_mask([...])`
-- pairwise gather/scatter: `logits.vindex[rows, cols]`
-- cartesian gather: `logits.oindex[rows, cols]`
+- pairwise gather/scatter: `logits[rows, cols]`
+- cartesian gather: `logits.cartesian[rows, cols]`
 - runtime-shaped mask selection: `logits[mask, :]`
 - mask scatter assignment: `logits[mask, :] = selected`
 - column-slice scalar update: `selected[:, 0] = selected[:, 0] + 10.0`
@@ -108,7 +109,7 @@ program exits nonzero if the final summary score drifts.
 src/main.dd          entry point
 src/activation_metrics_demo.dd activation, loss, metric helpers
 src/array_demos.dd   fixed arrays and slices
-src/advanced_indexing_demo.dd target-style index arrays, masks, vindex/oindex
+src/advanced_indexing_demo.dd target-style index arrays, masks, cartesian helper
 src/backend_surface_demo.dd backend marker and materialization boundaries
 src/blas_backend_demo.dd target-style BLAS backend boundary
 src/blas_demos.dd    OpenBLAS-backed matrix multiply

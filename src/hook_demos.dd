@@ -14,21 +14,7 @@ class TinyTensor:
         self.values[index] = value
 
 
-class VIndex:
-    data: list[i32]
-    cols: i32
-
-    @operator("[]")
-    def pairwise(self, rows: array[i32][2], cols: array[i32][2]) -> i32:
-        return self.data[(rows[0] * self.cols) + cols[0]] + self.data[(rows[1] * self.cols) + cols[1]]
-
-    @operator("[]=")
-    def set_pairwise(self, rows: array[i32][2], cols: array[i32][2], value: i32):
-        self.data[(rows[0] * self.cols) + cols[0]] = value
-        self.data[(rows[1] * self.cols) + cols[1]] = value
-
-
-class OIndex:
+class CartesianIndexer:
     data: list[i32]
     cols: i32
 
@@ -53,8 +39,7 @@ class PairwiseTensor:
     rows: i32
     cols: i32
     data: list[i32]
-    vindex: VIndex
-    oindex: OIndex
+    cartesian: CartesianIndexer
 
     @operator("[]")
     def at(self, row: i32, col: i32) -> i32:
@@ -63,6 +48,15 @@ class PairwiseTensor:
     @operator("[]=")
     def set_at(self, row: i32, col: i32, value: i32):
         self.data[(row * self.cols) + col] = value
+
+    @operator("[]")
+    def pairwise(self, rows: array[i32][2], cols: array[i32][2]) -> i32:
+        return self.data[(rows[0] * self.cols) + cols[0]] + self.data[(rows[1] * self.cols) + cols[1]]
+
+    @operator("[]=")
+    def set_pairwise(self, rows: array[i32][2], cols: array[i32][2], value: i32):
+        self.data[(rows[0] * self.cols) + cols[0]] = value
+        self.data[(rows[1] * self.cols) + cols[1]] = value
 
 
 def scalar_hook_demo() -> i32:
@@ -77,15 +71,15 @@ def scalar_hook_demo() -> i32:
 
 
 def pairwise_index_demo() -> i32:
-    section("pairwise gather via indexer object: tensor.vindex[rows, cols]")
+    section("pairwise gather via direct hook: tensor[rows, cols]")
     data: list[i32] = [1, 2, 3, 4]
-    tensor = PairwiseTensor(2, 2, data, VIndex(data, 2), OIndex(data, 2))
+    tensor = PairwiseTensor(2, 2, data, CartesianIndexer(data, 2))
     rows: array[i32] = [0, 1]
     cols: array[i32] = [1, 0]
 
-    before = tensor.vindex[rows, cols]
-    tensor.vindex[rows, cols] = 10
-    after = tensor.vindex[rows, cols]
+    before = tensor[rows, cols]
+    tensor[rows, cols] = 10
+    after = tensor[rows, cols]
 
     show_i32("before pairwise sum tensor[0,1] + tensor[1,0]", 5, before)
     show_i32("after pairwise set to 10", 20, after)
@@ -93,15 +87,15 @@ def pairwise_index_demo() -> i32:
 
 
 def orthogonal_index_demo() -> i32:
-    section("orthogonal gather via indexer object: tensor.oindex[rows, cols]")
+    section("orthogonal gather via indexer object: tensor.cartesian[rows, cols]")
     data: list[i32] = [1, 2, 3, 4]
-    tensor = PairwiseTensor(2, 2, data, VIndex(data, 2), OIndex(data, 2))
+    tensor = PairwiseTensor(2, 2, data, CartesianIndexer(data, 2))
     rows: array[i32] = [0, 1]
     cols: array[i32] = [0, 1]
 
-    before = tensor.oindex[rows, cols]
-    tensor.oindex[rows, cols] = 8
-    after = tensor.oindex[rows, cols]
+    before = tensor.cartesian[rows, cols]
+    tensor.cartesian[rows, cols] = 8
+    after = tensor.cartesian[rows, cols]
 
     show_i32("before cartesian sum of 2x2 grid", 10, before)
     show_i32("after setting cartesian grid to 8", 32, after)
