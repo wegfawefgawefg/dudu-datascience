@@ -5,6 +5,10 @@ Small runnable Dudu demos for array, slice, and tensor-style indexing.
 This is not a numeric library. It is a tour of the indexing forms that are
 useful for data science and ML-shaped code.
 
+The `spec/target_api` directory contains aspirational Dudu code for the real
+tensor library we want. Those files are not part of the build yet; they are the
+API target that compiler and library work should make real.
+
 ## Run
 
 ```bash
@@ -65,4 +69,5 @@ src/blas_demos.dd    OpenBLAS-backed matrix multiply
 src/hook_demos.dd    user-defined indexing operators
 src/tensor_demos.dd  small tensor-style mask demo
 src/print_utils.dd   tiny print helpers
+spec/target_api/     desired tensor API examples, not built yet
 ```

@@ -1,0 +1,28 @@
+from dudu_tensor import Tensor
+from dudu_tensor import arange
+from dudu_tensor import assert_close
+from dudu_tensor import ones
+from dudu_tensor.backends import cpu
+from dudu_tensor.backends import openblas
+
+
+def main() -> i32:
+    x = arange[f32](32, 784).to_backend(cpu.default())
+    w = ones[f32](784, 10).to_backend(openblas.default())
+
+    # Matmul dispatch is library/backend policy. Dudu only type-checks calls.
+    logits = x.matmul(w)
+    expected: Tensor[f32][32, 10] = x.to_backend(cpu.default()).matmul(w.to_backend(cpu.default()))
+    logits.to_cpu().assert_close(expected)
+
+    # CPU-contiguous access is explicit. This should be zero-copy only when
+    # backend/storage/layout make it honest.
+    cpu_logits = logits.to_cpu()
+    view = cpu_logits.as_array_view()
+    assert_close(view[0, 0], cpu_logits[0, 0])
+
+    # Owning materialization is explicit and may copy.
+    copied = logits.to_array()
+    assert_close(copied[0, 0], cpu_logits[0, 0])
+
+    return 0

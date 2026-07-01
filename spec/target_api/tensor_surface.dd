@@ -1,0 +1,45 @@
+from dudu_tensor import Tensor
+from dudu_tensor import arange
+from dudu_tensor import assert_close
+from dudu_tensor import full
+from dudu_tensor import ones
+from dudu_tensor import print_tensor
+from dudu_tensor import zeros
+
+
+def main() -> i32:
+    x = arange[f32](3, 4)
+    print_tensor("x", x)
+
+    # Scalar indexing and assignment are ordinary [] and []= hooks.
+    x[1, 2] = 99.0
+    assert_close(x[1, 2], 99.0)
+
+    # Normal slices are view-like. They should not allocate unless materialized.
+    row = x[1, :]
+    col = x[:, 2]
+    patch = x[1:, 1:3]
+
+    row.fill(5.0)
+    assert_close(x[1, 0], 5.0)
+    assert_close(x[1, 3], 5.0)
+
+    copied_patch = patch.to_tensor()
+    copied_patch[0, 0] = -1.0
+    assert_close(x[1, 1], 5.0)
+
+    # Shape should be inferred from constructors and visible in hover/inlay.
+    a = zeros[f32](2, 3)
+    b = ones[f32](3, 2)
+    c = a.matmul(b)
+
+    # Explicit shape assertions are allowed at API boundaries.
+    shaped: Tensor[f32][2, 2] = c.assume_shape[2, 2]()
+    print_tensor("shaped", shaped)
+
+    # Broadcast is library behavior, not compiler behavior.
+    bias = full[f32](1, 2, 0.5)
+    logits = shaped + bias
+    assert_close(logits[0, 0], 0.5)
+
+    return 0

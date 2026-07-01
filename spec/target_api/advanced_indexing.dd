@@ -1,0 +1,50 @@
+from dudu_tensor import Tensor
+from dudu_tensor import arange
+from dudu_tensor import assert_close
+from dudu_tensor import bool_mask
+from dudu_tensor import index_array
+from dudu_tensor import print_tensor
+
+
+def main() -> i32:
+    logits = arange[f32](4, 5)
+    rows = index_array([0, 2, 3])
+    cols = index_array([1, 4, 0])
+
+    # Pairwise gather/scatter. vindex is a library field returning an indexer.
+    pairwise = logits.vindex[rows, cols]
+    print_tensor("pairwise", pairwise)
+    pairwise_expected: Tensor[f32][3] = Tensor[f32].from_list([1.0, 14.0, 15.0])
+    pairwise.assert_close(pairwise_expected)
+
+    logits.vindex[rows, cols] = Tensor[f32].from_list([100.0, 200.0, 300.0])
+    assert_close(logits[0, 1], 100.0)
+    assert_close(logits[2, 4], 200.0)
+    assert_close(logits[3, 0], 300.0)
+
+    # Orthogonal/cartesian indexing is explicit and library-owned.
+    grid = logits.oindex[rows, cols]
+    expected_grid: Tensor[f32][3, 3] = Tensor[f32].from_nested([
+        [100.0, 4.0, 0.0],
+        [11.0, 200.0, 10.0],
+        [16.0, 19.0, 300.0],
+    ])
+    grid.assert_close(expected_grid)
+
+    # Boolean masks produce runtime-shaped tensors.
+    mask = bool_mask([False, True, False, True])
+    selected: Tensor[f32][dyn, 5] = logits[mask, :]
+    selected[:, 0] = selected[:, 0] + 10.0
+    logits[mask, :] = selected
+    assert_close(logits[1, 0], 15.0)
+    assert_close(logits[3, 0], 310.0)
+
+    # Chained indexer temporaries must work.
+    tiles = logits.window[2, 2]
+    tile = tiles[1, 2]
+    tile.assert_close(logits[1:3, 2:4].to_tensor())
+
+    same_tile = logits.window[2, 2][1, 2]
+    same_tile.assert_close(tile)
+
+    return 0

@@ -1,0 +1,48 @@
+from dudu_tensor import Tensor
+from dudu_tensor import mse_loss
+from dudu_tensor import randn
+from dudu_tensor import relu
+from dudu_tensor import sigmoid
+from dudu_tensor.autograd import Parameter
+from dudu_tensor.autograd import Tape
+from dudu_tensor.datasets import xor_inputs
+from dudu_tensor.datasets import xor_targets
+from dudu_tensor.optim import sgd
+
+
+class Mlp:
+    w1: Parameter[f32][2, 8]
+    b1: Parameter[f32][1, 8]
+    w2: Parameter[f32][8, 1]
+    b2: Parameter[f32][1, 1]
+
+    def forward(self, x: Tensor[f32][dyn, 2]) -> Tensor[f32][dyn, 1]:
+        hidden = relu(x.matmul(self.w1.value) + self.b1.value)
+        return sigmoid(hidden.matmul(self.w2.value) + self.b2.value)
+
+
+def main() -> i32:
+    x = xor_inputs[f32]()
+    y = xor_targets[f32]()
+    model = Mlp(
+        Parameter(randn[f32](2, 8, 0.1)),
+        Parameter(Tensor[f32].zeros(1, 8)),
+        Parameter(randn[f32](8, 1, 0.1)),
+        Parameter(Tensor[f32].zeros(1, 1)),
+    )
+    opt = sgd(model.parameters(), 0.1)
+
+    epoch = 0
+    while epoch < 200:
+        tape = Tape()
+        pred = tape.track(model.forward(x))
+        loss = mse_loss(pred, y)
+        tape.backward(loss)
+        opt.step()
+        opt.zero_grad()
+        epoch += 1
+
+    final_pred = model.forward(x)
+    if final_pred.binary_accuracy(y) < 0.95:
+        return 1
+    return 0
