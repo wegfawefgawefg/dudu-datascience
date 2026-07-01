@@ -84,6 +84,38 @@ class OIndex[T]:
             row += 1
 
 
+class WindowTiles[T]:
+    data: *list[T]
+    rows: i32
+    cols: i32
+    tile_rows: i32
+    tile_cols: i32
+
+    @operator("[]")
+    def tile(self, row: i32, col: i32) -> Tensor[T]:
+        out = empty_like[T](self.tile_rows, self.tile_cols)
+        tile_row = 0
+        while tile_row < self.tile_rows:
+            tile_col = 0
+            while tile_col < self.tile_cols:
+                source_row = row + tile_row
+                source_col = col + tile_col
+                out[tile_row, tile_col] = (*self.data)[(source_row * self.cols) + source_col]
+                tile_col += 1
+            tile_row += 1
+        return out
+
+
+class TensorWindow[T]:
+    data: *list[T]
+    rows: i32
+    cols: i32
+
+    @operator("[]")
+    def tiles(self, tile_rows: i32, tile_cols: i32) -> WindowTiles[T]:
+        return WindowTiles[T](self.data, self.rows, self.cols, tile_rows, tile_cols)
+
+
 class TensorView[T]:
     data: &list[T]
     offset: i32
@@ -129,6 +161,7 @@ class Tensor[T]:
     data: list[T]
     vindex: VIndex[T]
     oindex: OIndex[T]
+    window: TensorWindow[T]
 
     def init(self, rows: i32, cols: i32, data: list[T]):
         self.rows = rows
@@ -136,6 +169,7 @@ class Tensor[T]:
         self.data = data
         self.vindex = VIndex[T](&self.data, rows, cols)
         self.oindex = OIndex[T](&self.data, rows, cols)
+        self.window = TensorWindow[T](&self.data, rows, cols)
 
     @operator("[]")
     def at(self, row: i32, col: i32) -> T:

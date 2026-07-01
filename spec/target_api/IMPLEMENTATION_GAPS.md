@@ -14,7 +14,7 @@ slice of the target API. It currently provides:
 - `from_list`, `from_nested`
 - `assert_close`, `print_tensor`
 - `index_array`, `bool_mask`
-- `vindex` and `oindex` library indexer fields
+- `vindex`, `oindex`, and `window` library indexer fields
 
 The remaining target API still needs:
 
@@ -89,8 +89,10 @@ Required semantics:
 Runnable status: `src/advanced_indexing_demo.dd` now covers reusable
 `index_array`, `bool_mask`, `tensor.vindex[rows, cols]` pairwise
 gather/scatter, `tensor.oindex[rows, cols]` cartesian gather, and
-`tensor[mask, :]` selection/scatter. Window/tiling indexers and chained window
-temporaries remain target work.
+`tensor[mask, :]` selection/scatter. It also covers reusable window tiles with
+both `tiles = tensor.window[height, width]; tiles[row, col]` and direct
+chained `tensor.window[height, width][row, col]` indexing. Sparse COO indexers
+and richer window policies remain target work.
 
 ## 5. Broadcasting And Elementwise Ops
 
