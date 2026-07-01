@@ -3,13 +3,15 @@ from dudu_tensor import mse_loss
 from dudu_tensor import randn
 from dudu_tensor import relu
 from dudu_tensor import sigmoid
+from dudu_tensor import zeros
+from dudu_tensor.autograd import Module
 from dudu_tensor.autograd import Parameter
 from dudu_tensor.datasets import xor_inputs
 from dudu_tensor.datasets import xor_targets
 from dudu_tensor.optim import sgd
 
 
-class Mlp:
+class Mlp(Module):
     w1: Parameter[f32][2, 8]
     b1: Parameter[f32][1, 8]
     w2: Parameter[f32][8, 1]
@@ -25,22 +27,22 @@ def main() -> i32:
     y = xor_targets[f32]()
     model = Mlp(
         Parameter(randn[f32](2, 8, 0.1)),
-        Parameter(Tensor[f32].zeros(1, 8)),
+        Parameter(zeros[f32](1, 8)),
         Parameter(randn[f32](8, 1, 0.1)),
-        Parameter(Tensor[f32].zeros(1, 1)),
+        Parameter(zeros[f32](1, 1)),
     )
     opt = sgd(model.parameters(), 0.1)
 
     epoch = 0
     while epoch < 200:
-        pred = model.forward(x)
+        pred = model(x)
         loss = mse_loss(pred, y)
         loss.backward()
         opt.step()
         opt.zero_grad()
         epoch += 1
 
-    final_pred = model.forward(x)
+    final_pred = model(x)
     if final_pred.binary_accuracy(y) < 0.95:
         return 1
     return 0

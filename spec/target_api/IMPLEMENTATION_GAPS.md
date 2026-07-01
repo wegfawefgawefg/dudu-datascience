@@ -15,6 +15,11 @@ Current demos define tiny local `Tensor` classes. The target API needs a real
 - `assert_close`, `print_tensor`
 - reductions and metrics needed by examples
 
+Construction and testing helpers should prefer module-level functions such as
+`zeros[f32](...)`, `from_list[f32](...)`, and `assert_close(actual, expected)`.
+Class static factories are allowed only when they add real value; the target
+API should not mix styles casually.
+
 ## 2. View And Copy Boundary
 
 Normal slices should return view-like values when storage/layout allow it:
@@ -29,6 +34,8 @@ Explicit materialization APIs are required:
 - `view.to_tensor()`
 - `tensor.to_array()`
 - `tensor.as_array_view()`
+- `tensor.to(device)`
+- `tensor.cpu()`
 
 `as_array_view()` is zero-copy only for CPU-contiguous storage. GPU tensors,
 strided views, lazy expressions, and autograd values need explicit conversion
@@ -88,11 +95,17 @@ OpenBLAS should call CBLAS through normal native imports. OpenCL should own
 device buffers, kernels, upload/download, and cleanup through normal Dudu/C++
 RAII boundaries. CUDA/cuBLAS is not required on this AMD machine.
 
+User code should move values with PyTorch-like device calls such as
+`tensor.to(opencl.default())` and `tensor.cpu()`. Backend selection is library
+policy; the compiler should only preserve enough type facts for diagnostics.
+
 ## 7. Autograd Prototype
 
 `autograd_training.dd` requires:
 
 - `Parameter[T][shape]`
+- `Module` or equivalent parameter-owning base/trait
+- modules callable as `model(x)` while still allowing explicit `forward`
 - parameters usable directly in tensor operations
 - internally tracked tensor operations
 - `loss.backward()`

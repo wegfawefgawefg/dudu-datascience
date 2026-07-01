@@ -1,27 +1,28 @@
 from dudu_tensor import Tensor
 from dudu_tensor import arange
+from dudu_tensor import assert_close
 from dudu_tensor import ones
 from dudu_tensor.backends import cpu
 from dudu_tensor.backends import opencl
 
 
 def main() -> i32:
-    host_x = arange[f32](16, 64).to_backend(cpu.default())
+    host_x = arange[f32](16, 64).to(cpu.default())
     host_w = ones[f32](64, 8)
 
-    x = host_x.to_backend(opencl.default())
-    w = host_w.to_backend(opencl.default())
+    x = host_x.to(opencl.default())
+    w = host_w.to(opencl.default())
 
     # Device matmul is a library call. The result stays on the device.
     logits = x.matmul(w)
 
     # Indexing a GPU tensor must not silently copy to CPU.
     device_row = logits[0, :]
-    host_row = device_row.to_cpu()
-    host_row.assert_close(host_x.matmul(host_w)[0, :].to_tensor())
+    host_row = device_row.cpu()
+    assert_close(host_row, host_x.matmul(host_w)[0, :].to_tensor())
 
     # Explicit transfer back to CPU.
-    host_logits: Tensor[f32][16, 8] = logits.to_cpu()
-    host_logits.assert_close(host_x.matmul(host_w))
+    host_logits: Tensor[f32][16, 8] = logits.cpu()
+    assert_close(host_logits, host_x.matmul(host_w))
 
     return 0

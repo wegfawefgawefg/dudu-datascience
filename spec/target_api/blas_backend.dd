@@ -7,17 +7,17 @@ from dudu_tensor.backends import openblas
 
 
 def main() -> i32:
-    x = arange[f32](32, 784).to_backend(cpu.default())
-    w = ones[f32](784, 10).to_backend(openblas.default())
+    x = arange[f32](32, 784).to(cpu.default())
+    w = ones[f32](784, 10).to(openblas.default())
 
     # Matmul dispatch is library/backend policy. Dudu only type-checks calls.
     logits = x.matmul(w)
-    expected: Tensor[f32][32, 10] = x.to_backend(cpu.default()).matmul(w.to_backend(cpu.default()))
-    logits.to_cpu().assert_close(expected)
+    expected: Tensor[f32][32, 10] = x.to(cpu.default()).matmul(w.to(cpu.default()))
+    assert_close(logits.cpu(), expected)
 
     # CPU-contiguous access is explicit. This should be zero-copy only when
     # backend/storage/layout make it honest.
-    cpu_logits = logits.to_cpu()
+    cpu_logits = logits.cpu()
     view = cpu_logits.as_array_view()
     assert_close(view[0, 0], cpu_logits[0, 0])
 
