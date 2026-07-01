@@ -17,6 +17,7 @@ class Mlp(Module):
     w2: Parameter[f32][8, 1]
     b2: Parameter[f32][1, 1]
 
+    @operator("()")
     def forward(self, x: Tensor[f32][dyn, 2]) -> Tensor[f32][dyn, 1]:
         hidden = relu(x.matmul(self.w1) + self.b1)
         return sigmoid(hidden.matmul(self.w2) + self.b2)

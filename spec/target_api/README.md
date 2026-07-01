@@ -27,5 +27,5 @@ Current graduated targets:
 
 Current pending targets:
 
-- `autograd_training.dd`: needs autograd modules, parameters, callable
-  modules, backward, and optimizers
+- `autograd_training.dd`: callable modules use Dudu's `@operator("()")`;
+  the remaining work is autograd modules, parameters, backward, and optimizers

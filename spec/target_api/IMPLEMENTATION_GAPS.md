@@ -175,7 +175,8 @@ policy; the compiler should only preserve enough type facts for diagnostics.
 
 - `Parameter[T][shape]`
 - `Module` or equivalent parameter-owning base/trait
-- modules callable as `model(x)` while still allowing explicit `forward`
+- modules callable as `model(x)` through `@operator("()")` while still allowing
+  the method to be named `forward`
 - parameters usable directly in tensor operations
 - internally tracked tensor operations
 - `loss.backward()`
