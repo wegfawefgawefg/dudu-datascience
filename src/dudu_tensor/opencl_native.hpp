@@ -101,7 +101,7 @@ inline DeviceTensor* matmul(DeviceTensor* left, DeviceTensor* right) {
     }
 
     DeviceTensor* out = make_empty(left->rows, right->cols);
-    const char* source =
+    const char* matmul_source =
         "__kernel void matmul(const int m, const int n, const int k, "
         "__global const float* a, __global const float* b, __global float* out) { "
         "int row = get_global_id(0); int col = get_global_id(1); "
@@ -109,7 +109,7 @@ inline DeviceTensor* matmul(DeviceTensor* left, DeviceTensor* right) {
         "float acc = 0.0f; "
         "for (int i = 0; i < k; ++i) { acc += a[row * k + i] * b[i * n + col]; } "
         "out[row * n + col] = acc; }";
-    cl_program program = build_program(source);
+    cl_program program = build_program(matmul_source);
 
     cl_int err{};
     cl_kernel kernel = clCreateKernel(program, "matmul", &err);
@@ -156,7 +156,7 @@ inline DeviceTensor* gather_view(DeviceTensor* input, const ddtensor::IndexPlan&
     const int stride1 = rank >= 2 ? plan.strides[1] : 0;
     const int total = out_rows * out_cols;
 
-    const char* source =
+    const char* gather_source =
         "__kernel void gather_view(const int rank, const int shape0, const int shape1, "
         "const int stride0, const int stride1, const int offset, const int total, "
         "__global const float* input, __global float* out) { "
@@ -166,7 +166,7 @@ inline DeviceTensor* gather_view(DeviceTensor* input, const ddtensor::IndexPlan&
         "else { int row = flat / shape1; int col = flat - row * shape1; "
         "source_index += row * stride0 + col * stride1; } "
         "out[flat] = input[source_index]; }";
-    cl_program program = build_program(source);
+    cl_program program = build_program(gather_source);
 
     cl_int err{};
     cl_kernel kernel = clCreateKernel(program, "gather_view", &err);

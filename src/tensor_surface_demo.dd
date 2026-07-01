@@ -38,5 +38,5 @@ def run_tensor_surface_demo() -> i32:
     assert_close(logits[0, 0], 0.5)
 
     col_copy = col.to_tensor()
-    assert_close(col_copy[0, 0], 2.0)
+    assert_close(col_copy[0], 2.0)
     return i32(logits[0, 0] + x[1, 0] + x[1, 3]) + 31

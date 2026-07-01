@@ -20,6 +20,8 @@ The current module provides:
   `offset`, plus the same dimension/count helpers
 - one rank-independent CPU view planner for scalar/slice/ellipsis/new-axis
   index items, shared by `Tensor` and `TensorView`
+- scalar element access through `*idx: scalar_index`, so scalar-indexed axes
+  are dropped instead of preserving old rank-2 row/column shapes
 - `zeros`, `ones`, `full`, `arange`, `randn`
 - `from_list`, `from_nested`
 - `assert_close`, `print_tensor`
@@ -33,7 +35,9 @@ The remaining target API still needs:
 - `Tensor[T][shape]` owning CPU storage
 - `TensorView[T][shape]` borrowing storage
 - broader assignment and advanced-index combinations through the same index
-  planner
+  planner; `tensor[:, col] = values` is still a narrow Dudu helper and should
+  eventually become a generic tensor assignment path like the in-repo `ndad`
+  target surface
 - broader reductions and metrics needed by examples
 - cleaner extension-module boundaries so importing the CPU tensor surface does
   not force every target to link the OpenCL helper

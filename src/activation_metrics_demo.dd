@@ -50,9 +50,9 @@ def run_activation_metrics_demo() -> i32:
     ])
     loss = mse_loss(predicted, expected)
     accuracy = predicted.binary_accuracy(expected)
-    assert_close(loss[0, 0], 0.025)
+    assert_close(loss[0], 0.025)
     assert_close(accuracy, 1.0)
-    show_f32("mse_loss(predicted, expected)", 0.025, loss[0, 0])
+    show_f32("mse_loss(predicted, expected)", 0.025, loss[0])
     show_f32("predicted.binary_accuracy(expected)", 1.0, accuracy)
 
     init = randn[f32](2, 3, 0.1)
@@ -63,6 +63,6 @@ def run_activation_metrics_demo() -> i32:
     assert_close(init, expected_init)
     print_tensor("randn[f32](2, 3, 0.1)", init)
 
-    score = i32(accuracy * 40.0 + loss[0, 0] * 80.0)
+    score = i32(accuracy * 40.0 + loss[0] * 80.0)
     show_i32("activation metrics score", 42, score)
     return score

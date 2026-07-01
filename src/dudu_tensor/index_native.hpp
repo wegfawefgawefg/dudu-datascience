@@ -54,6 +54,27 @@ inline int slice_count(int start, int stop, int step) {
     return ((stop - start) + step - 1) / step;
 }
 
+inline int element_count(const std::vector<int>& shape) {
+    int total = 1;
+    for (int dim : shape) {
+        total *= dim;
+    }
+    return shape.empty() ? 1 : total;
+}
+
+inline int flat_offset(const std::vector<int>& shape, const std::vector<int>& strides, int offset,
+                       int flat) {
+    int source_offset = offset;
+    for (std::size_t dim = shape.size(); dim > 0; --dim) {
+        const std::size_t axis = dim - 1;
+        const int extent = shape[axis];
+        const int coord = extent == 0 ? 0 : flat % extent;
+        flat = extent == 0 ? 0 : flat / extent;
+        source_offset += coord * strides[axis];
+    }
+    return source_offset;
+}
+
 template <class T>
 concept IntegralIndex = std::is_integral_v<std::decay_t<T>>;
 
@@ -202,6 +223,37 @@ IndexPlan index_plan(const std::vector<int>& source_shape, const std::vector<int
                      int source_offset, const Args&... args) {
     return index_plan_from_items(source_shape, source_strides, source_offset,
                                  std::vector<IndexItem>{index_item(args)...});
+}
+
+template <class... Args>
+int element_offset(const std::vector<int>& source_shape, const std::vector<int>& source_strides,
+                   int source_offset, const Args&... args) {
+    IndexPlan plan = index_plan(source_shape, source_strides, source_offset, args...);
+    if (!plan.shape.empty()) {
+        throw std::invalid_argument("tensor element access requires scalar indexes");
+    }
+    return plan.offset;
+}
+
+template <class Data>
+Data materialize_view(const Data& source, const std::vector<int>& shape,
+                      const std::vector<int>& strides, int offset) {
+    Data out;
+    const int count = element_count(shape);
+    out.reserve(static_cast<std::size_t>(count));
+    for (int flat = 0; flat < count; ++flat) {
+        out.push_back(source[static_cast<std::size_t>(flat_offset(shape, strides, offset, flat))]);
+    }
+    return out;
+}
+
+template <class Data, class Value>
+void fill_view(Data& source, const std::vector<int>& shape, const std::vector<int>& strides,
+               int offset, const Value& value) {
+    const int count = element_count(shape);
+    for (int flat = 0; flat < count; ++flat) {
+        source[static_cast<std::size_t>(flat_offset(shape, strides, offset, flat))] = value;
+    }
 }
 
 } // namespace ddtensor

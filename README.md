@@ -110,6 +110,7 @@ slice into reusable `dudu_tensor` code:
 - `Tensor` and `TensorView` carry `shape`, `strides`, and `offset`
 - rank-3 view: `image[:, :, 1]`
 - rank-4 view: `hyper[:, 1, :, 0]`
+- scalar-indexed axes are dropped, matching Python/NumPy-shaped indexing
 - old row/column/patch-specific view helpers are replaced by one
   rank-independent index-plan path
 

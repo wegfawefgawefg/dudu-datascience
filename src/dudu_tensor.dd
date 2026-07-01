@@ -224,36 +224,14 @@ class TensorView[T]:
         return shape_total(self.shape)
 
     @operator("[]")
-    def at(self, row: i32, col: i32) -> T:
-        return (*self.data)[offset_for_indices(self.offset, self.strides, index2(row, col))]
-
-    @operator("[]")
-    def at1(self, index: i32) -> T:
-        return (*self.data)[offset_from_flat(self.offset, self.shape, self.strides, index)]
-
-    @operator("[]")
-    def at3(self, a: i32, b: i32, c: i32) -> T:
-        return (*self.data)[offset_for_indices(self.offset, self.strides, index3(a, b, c))]
-
-    @operator("[]")
-    def at4(self, a: i32, b: i32, c: i32, d: i32) -> T:
-        return (*self.data)[offset_for_indices(self.offset, self.strides, index4(a, b, c, d))]
+    def at_scalar(self, *idx: scalar_index) -> T:
+        offset: i32 = cpp("ddtensor::element_offset(self.shape, self.strides, self.offset, idx...)")
+        return (*self.data)[offset]
 
     @operator("[]=")
-    def set_at(self, row: i32, col: i32, value: T):
-        (*self.data)[offset_for_indices(self.offset, self.strides, index2(row, col))] = value
-
-    @operator("[]=")
-    def set_at1(self, index: i32, value: T):
-        (*self.data)[offset_from_flat(self.offset, self.shape, self.strides, index)] = value
-
-    @operator("[]=")
-    def set_at3(self, a: i32, b: i32, c: i32, value: T):
-        (*self.data)[offset_for_indices(self.offset, self.strides, index3(a, b, c))] = value
-
-    @operator("[]=")
-    def set_at4(self, a: i32, b: i32, c: i32, d: i32, value: T):
-        (*self.data)[offset_for_indices(self.offset, self.strides, index4(a, b, c, d))] = value
+    def set_scalar(self, *idx: scalar_index, value: T):
+        offset: i32 = cpp("ddtensor::element_offset(self.shape, self.strides, self.offset, idx...)")
+        (*self.data)[offset] = value
 
     @operator("[]")
     def view_at(self, *idx: basic_index) -> TensorView[T]:
@@ -264,25 +242,18 @@ class TensorView[T]:
         return TensorView[T](self.data, offset, shape, strides)
 
     def fill(self, value: T):
-        i = 0
-        while i < self.count():
-            self[i] = value
-            i += 1
+        cpp("ddtensor::fill_view((*self.data), self.shape, self.strides, self.offset, value);")
 
     def to_tensor(self) -> Tensor[T]:
-        out = empty_shape[T](self.shape)
-        i = 0
-        while i < self.count():
-            out[i] = self[i]
-            i += 1
-        return out
+        data: list[T] = cpp("ddtensor::materialize_view((*self.data), self.shape, self.strides, self.offset)")
+        return from_shape[T](self.shape, data)
 
     @operator("+")
     def add_scalar(self, value: T) -> Tensor[T]:
-        out = empty_shape[T](self.shape)
+        out = self.to_tensor()
         i = 0
-        while i < self.count():
-            out[i] = self[i] + value
+        while i < i32(len(out.data)):
+            out.data[i] = out.data[i] + value
             i += 1
         return out
 
@@ -343,12 +314,14 @@ class Tensor[T]:
         return shape_total(self.shape)
 
     @operator("[]")
-    def at(self, row: i32, col: i32) -> T:
-        return self.data[offset_for_indices(self.offset, self.strides, index2(row, col))]
+    def at_scalar(self, *idx: scalar_index) -> T:
+        offset: i32 = cpp("ddtensor::element_offset(self.shape, self.strides, self.offset, idx...)")
+        return self.data[offset]
 
     @operator("[]=")
-    def set_at(self, row: i32, col: i32, value: T):
-        self.data[offset_for_indices(self.offset, self.strides, index2(row, col))] = value
+    def set_scalar(self, *idx: scalar_index, value: T):
+        offset: i32 = cpp("ddtensor::element_offset(self.shape, self.strides, self.offset, idx...)")
+        self.data[offset] = value
 
     @operator("[]")
     def pairwise(self, rows: IndexArray, cols: IndexArray) -> Tensor[T]:
@@ -367,30 +340,6 @@ class Tensor[T]:
         while i < count:
             self.data[offset_for_indices(self.offset, self.strides, index2(rows[i], cols[i]))] = values[i]
             i += 1
-
-    @operator("[]")
-    def at1(self, index: i32) -> T:
-        return self.data[offset_from_flat(self.offset, self.shape, self.strides, index)]
-
-    @operator("[]")
-    def at3(self, a: i32, b: i32, c: i32) -> T:
-        return self.data[offset_for_indices(self.offset, self.strides, index3(a, b, c))]
-
-    @operator("[]")
-    def at4(self, a: i32, b: i32, c: i32, d: i32) -> T:
-        return self.data[offset_for_indices(self.offset, self.strides, index4(a, b, c, d))]
-
-    @operator("[]=")
-    def set_at1(self, index: i32, value: T):
-        self.data[offset_from_flat(self.offset, self.shape, self.strides, index)] = value
-
-    @operator("[]=")
-    def set_at3(self, a: i32, b: i32, c: i32, value: T):
-        self.data[offset_for_indices(self.offset, self.strides, index3(a, b, c))] = value
-
-    @operator("[]=")
-    def set_at4(self, a: i32, b: i32, c: i32, d: i32, value: T):
-        self.data[offset_for_indices(self.offset, self.strides, index4(a, b, c, d))] = value
 
     @operator("[]")
     def view_at(self, *idx: basic_index) -> TensorView[T]:
@@ -471,19 +420,12 @@ class Tensor[T]:
         row_count = slice_count(rows, self.dim(0))
         row = 0
         while row < row_count:
-            self[row_start + (row * row_step), col] = values[row, 0]
+            self[row_start + (row * row_step), col] = values[row]
             row += 1
 
     def to_tensor(self) -> Tensor[T]:
-        out = empty_like[T](self.dim(0), self.dim(1))
-        row = 0
-        while row < self.dim(0):
-            col = 0
-            while col < self.dim(1):
-                out[row, col] = self[row, col]
-                col += 1
-            row += 1
-        return out
+        data: list[T] = cpp("ddtensor::materialize_view(self.data, self.shape, self.strides, self.offset)")
+        return from_shape[T](self.shape, data)
 
     def as_array_view(self) -> TensorView[T]:
         return TensorView[T](&self.data, self.offset, self.shape, self.strides)
@@ -832,13 +774,11 @@ def sum_view(input: TensorView[f32]) -> f32:
 
 def print_tensor(label: str, input: Tensor[f32]):
     print(label)
-    row = 0
-    while row < input.dim(0):
-        col = 0
-        while col < input.dim(1):
-            print(input[row, col])
-            col += 1
-        row += 1
+    flat = input.to_tensor()
+    i = 0
+    while i < i32(len(flat.data)):
+        print(flat.data[i])
+        i += 1
 
 
 def assert_close(actual: f32, expected: f32):
@@ -857,15 +797,19 @@ def assert_close(actual: TensorView[f32], expected: Tensor[f32]):
 
 
 def assert_tensor_close(actual: Tensor[f32], expected: Tensor[f32]):
-    if actual.dim(0) != expected.dim(0) or actual.dim(1) != expected.dim(1):
+    if i32(len(actual.shape)) != i32(len(expected.shape)):
         assert False, "tensor shape mismatch"
-    row = 0
-    while row < actual.dim(0):
-        col = 0
-        while col < actual.dim(1):
-            assert_close(actual[row, col], expected[row, col])
-            col += 1
-        row += 1
+    axis = 0
+    while axis < i32(len(actual.shape)):
+        if actual.shape[axis] != expected.shape[axis]:
+            assert False, "tensor shape mismatch"
+        axis += 1
+    actual_contiguous = actual.to_tensor()
+    expected_contiguous = expected.to_tensor()
+    i = 0
+    while i < i32(len(actual_contiguous.data)):
+        assert_close(actual_contiguous.data[i], expected_contiguous.data[i])
+        i += 1
 
 
 def assert_view_close(actual: TensorView[f32], expected: Tensor[f32]):
