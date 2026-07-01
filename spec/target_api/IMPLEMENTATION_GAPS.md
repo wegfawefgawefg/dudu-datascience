@@ -52,6 +52,12 @@ Target code assumes these are usable and visible in hover/inlay:
 - mask selection producing `dyn`
 - `assume_shape[...]` or equivalent explicit shape assertion
 
+The runnable `src/dudu_tensor.dd` slice now provides method-form
+`tensor.assume_shape[Rows, Cols]()` for explicit API-boundary assertions. This
+currently carries compile-time metadata while preserving normal runtime
+`rows`/`cols`; broader shape propagation and diagnostics remain compiler and
+library work.
+
 The compiler should provide general shape metadata and diagnostics. Tensor
 layout, allocation, and backend behavior stay in library code.
 

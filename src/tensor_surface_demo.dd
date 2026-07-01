@@ -30,7 +30,7 @@ def run_tensor_surface_demo() -> i32:
     b = ones[f32](3, 2)
     c = a.matmul(b)
 
-    shaped = c
+    shaped: Tensor[f32][2, 2] = c.assume_shape[2, 2]()
     print_tensor("surface shaped", shaped)
 
     bias = full[f32](1, 2, 0.5)
