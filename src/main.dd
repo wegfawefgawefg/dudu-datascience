@@ -3,8 +3,8 @@ from blas_demos import run_blas_demos
 from hook_demos import run_hook_demos
 from print_utils import section
 from print_utils import show_i32
-from tensor_surface_demo import run_tensor_surface_demo
 from tensor_demos import run_tensor_demos
+from tensor_surface_demo import run_tensor_surface_demo
 
 
 def main() -> i32:

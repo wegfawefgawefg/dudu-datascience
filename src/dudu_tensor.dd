@@ -131,6 +131,22 @@ class Tensor[T]:
             index += 1
         return out
 
+    def matmul(self, right: Tensor[T]) -> Tensor[T]:
+        out = empty_like[T](self.rows, right.cols)
+        row = 0
+        while row < self.rows:
+            col = 0
+            while col < right.cols:
+                acc: T = T(0)
+                k = 0
+                while k < self.cols:
+                    acc += self[row, k] * right[k, col]
+                    k += 1
+                out[row, col] = acc
+                col += 1
+            row += 1
+        return out
+
 def slice_start(value: slice) -> i32:
     if value.has_start:
         return i32(value.start)
@@ -262,20 +278,7 @@ def scale(input: Tensor[f32], factor: f32) -> Tensor[f32]:
 
 
 def matmul(left: Tensor[f32], right: Tensor[f32]) -> Tensor[f32]:
-    out = zeros[f32](left.rows, right.cols)
-    row = 0
-    while row < left.rows:
-        col = 0
-        while col < right.cols:
-            acc: f32 = 0.0
-            k = 0
-            while k < left.cols:
-                acc += left[row, k] * right[k, col]
-                k += 1
-            out[row, col] = acc
-            col += 1
-        row += 1
-    return out
+    return left.matmul(right)
 
 
 def matmul_openblas(left: Tensor[f32], right: Tensor[f32]) -> Tensor[f32]:
