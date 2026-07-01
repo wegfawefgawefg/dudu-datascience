@@ -2,21 +2,7 @@ from print_utils import section
 from print_utils import show_i32
 
 
-def sum_span(values: span[i32]) -> i32:
-    total = 0
-    for value: i32 in values:
-        total += value
-    return total
-
-
-def sum_strided(values: strided_span[i32]) -> i32:
-    total = 0
-    for value: i32 in values:
-        total += value
-    return total
-
-
-def sum_patch(values: strided_span2[i32]) -> i32:
+def sum_view(values: array_view[i32]) -> i32:
     total = 0
     for value: i32 in values:
         total += value
@@ -47,8 +33,8 @@ def row_slice_demo() -> i32:
         [100, 200, 300, 400],
     ]
 
-    row: span[i32] = matrix[1, :]
-    total = sum_span(row)
+    row: array_view[i32] = matrix[1, :]
+    total = sum_view(row)
     show_i32("sum of row 1", 100, total)
     show_i32("row[2]", 30, row[2])
     return total + row[2]
@@ -62,8 +48,8 @@ def column_slice_demo() -> i32:
         [100, 200, 300, 400],
     ]
 
-    col: strided_span[i32] = matrix[:, 1]
-    total = sum_strided(col)
+    col: array_view[i32] = matrix[:, 1]
+    total = sum_view(col)
     show_i32("sum of column 1", 222, total)
     show_i32("col[2]", 200, col[2])
     return total + col[2]
@@ -77,8 +63,8 @@ def full_matrix_slice_demo() -> i32:
         [3, 6],
     ]
 
-    all_values: span[i32] = matrix[:, :]
-    total = sum_span(all_values)
+    all_values: array_view[i32] = matrix[:, :]
+    total = sum_view(all_values)
     show_i32("sum of every matrix value", 42, total)
     return total
 
@@ -91,8 +77,8 @@ def patch_slice_demo() -> i32:
         [100, 200, 300, 400],
     ]
 
-    patch: strided_span2[i32] = matrix[1:3, 2:4]
-    total = sum_patch(patch)
+    patch: array_view[i32] = matrix[1:3, 2:4]
+    total = sum_view(patch)
     show_i32("sum of patch [[30, 40], [300, 400]]", 770, total)
     show_i32("patch[1, 0]", 300, patch[1, 0])
     return total + patch[1, 0]
@@ -102,12 +88,12 @@ def stepped_slice_demo() -> i32:
     section("1d stepped slices: values[0:6:2], values[1::2], values[::3]")
     values: array[i32] = [3, 10, 5, 20, 7, 30, 11]
 
-    evens: strided_span[i32] = values[0:6:2]
-    odds: strided_span[i32] = values[1::2]
-    thirds: strided_span[i32] = values[::3]
-    even_sum = sum_strided(evens)
-    odd_sum = sum_strided(odds)
-    third_sum = sum_strided(thirds)
+    evens: array_view[i32] = values[0:6:2]
+    odds: array_view[i32] = values[1::2]
+    thirds: array_view[i32] = values[::3]
+    even_sum = sum_view(evens)
+    odd_sum = sum_view(odds)
+    third_sum = sum_view(thirds)
 
     show_i32("sum values[0:6:2] -> 3 + 5 + 7", 15, even_sum)
     show_i32("sum values[1::2] -> 10 + 20 + 30", 60, odd_sum)
@@ -123,8 +109,8 @@ def open_range_demo() -> i32:
         [100, 200, 300, 400],
     ]
 
-    patch: strided_span2[i32] = matrix[1:, 1:]
-    total = sum_patch(patch)
+    patch: array_view[i32] = matrix[1:, 1:]
+    total = sum_view(patch)
     show_i32("sum of lower-right 2x3 patch", 990, total)
     show_i32("patch[0, 0]", 20, patch[0, 0])
     return total + patch[0, 0]
@@ -138,15 +124,15 @@ def rank3_channel_demo() -> i32:
     ]
 
     green = pixels[1, 1, 1]
-    first_rgb: span[i32] = pixels[0, 0, 0:3]
-    all_green: strided_span[i32] = pixels[:, :, 1]
-    all_values: span[i32] = pixels[:, :, :]
+    first_rgb: array_view[i32] = pixels[0, 0, 0:3]
+    all_green: array_view[i32] = pixels[:, :, 1]
+    all_values: array_view[i32] = pixels[:, :, :]
 
     show_i32("pixels[1, 1, 1]", 50, green)
-    show_i32("sum pixels[0, 0, 0:3]", 6, sum_span(first_rgb))
-    show_i32("sum pixels[:, :, 1]", 77, sum_strided(all_green))
-    show_i32("sum pixels[:, :, :]", 1251, sum_span(all_values))
-    return green + sum_span(first_rgb) + sum_strided(all_green) + sum_span(all_values)
+    show_i32("sum pixels[0, 0, 0:3]", 6, sum_view(first_rgb))
+    show_i32("sum pixels[:, :, 1]", 77, sum_view(all_green))
+    show_i32("sum pixels[:, :, :]", 1251, sum_view(all_values))
+    return green + sum_view(first_rgb) + sum_view(all_green) + sum_view(all_values)
 
 
 def run_array_demos() -> i32:

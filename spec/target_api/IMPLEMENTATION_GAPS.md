@@ -5,11 +5,15 @@ those files compile and run without compiler-owned tensor policy.
 
 ## 1. Reusable Tensor Library
 
-The runnable demos now use a real `src/dudu_tensor.dd` module for the first
-slice of the target API. It currently provides:
+The runnable demos use `src/dudu_tensor.dd` for early dogfood, but its current
+core view/storage shape is not the final tensor architecture. The rank-2
+`rows`/`cols` model must be replaced with rank-generic `shape`, `strides`, and
+`offset` metadata before this library is treated as a viable tensor foundation.
+
+The current module provides:
 
 - `Tensor[T]` owning CPU storage with runtime `rows`/`cols`
-- `TensorView[T]` borrowing CPU storage for normal row/column/patch slices
+- `TensorView[T]` borrowing CPU storage for rank-2 row/column/patch slices
 - `zeros`, `ones`, `full`, `arange`, `randn`
 - `from_list`, `from_nested`
 - `assert_close`, `print_tensor`
@@ -19,8 +23,11 @@ slice of the target API. It currently provides:
 
 The remaining target API still needs:
 
+- `Tensor[T]` core representation based on `shape`, `strides`, and `offset`
+- `TensorView[T]` core representation based on `shape`, `strides`, and `offset`
 - `Tensor[T][shape]` owning CPU storage
 - `TensorView[T][shape]` borrowing storage
+- rank 1, 2, 3, and 4 indexing/slicing through the same implementation path
 - broader reductions and metrics needed by examples
 
 Construction and testing helpers should prefer module-level functions such as
@@ -65,6 +72,10 @@ The runnable `src/dudu_tensor.dd` slice now provides method-form
 currently carries compile-time metadata while preserving normal runtime
 `rows`/`cols`; broader shape propagation and diagnostics remain compiler and
 library work.
+
+The next tensor-library correction is to make shape metadata match runtime
+storage metadata. `rows`/`cols` can remain as rank-2 helpers, but they cannot be
+the foundation.
 
 The compiler should provide general shape metadata and diagnostics. Tensor
 layout, allocation, and backend behavior stay in library code.

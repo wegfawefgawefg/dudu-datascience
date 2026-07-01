@@ -28,6 +28,7 @@ dudu run --timings
 
 - scalar comma indexing: `matrix[1, 2]`
 - indexed assignment: `matrix[2, 3] = ...`
+- generic shape/stride views through `array_view[T]`
 - row views: `matrix[1, :]`
 - column views: `matrix[:, 1]`
 - full matrix views: `matrix[:, :]`
