@@ -78,6 +78,7 @@ slice into reusable `dudu_tensor` code:
 - cartesian gather: `logits.oindex[rows, cols]`
 - runtime-shaped mask selection: `logits[mask, :]`
 - mask scatter assignment: `logits[mask, :] = selected`
+- column-slice scalar update: `selected[:, 0] = selected[:, 0] + 10.0`
 - chained window tiles: `logits.window[2, 2][1, 2]`
 
 The BLAS demo needs `openblas` discoverable through `pkg-config`.

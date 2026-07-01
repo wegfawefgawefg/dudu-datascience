@@ -154,6 +154,18 @@ class TensorView[T]:
             row += 1
         return out
 
+    @operator("+")
+    def add_scalar(self, value: T) -> Tensor[T]:
+        out = empty_like[T](self.rows, self.cols)
+        row = 0
+        while row < self.rows:
+            col = 0
+            while col < self.cols:
+                out[row, col] = self[row, col] + value
+                col += 1
+            row += 1
+        return out
+
 
 class Tensor[T]:
     rows: i32
@@ -267,6 +279,28 @@ class Tensor[T]:
                 col += 1
             row += 1
         return out
+
+    @operator("+")
+    def add_scalar(self, value: T) -> Tensor[T]:
+        out = empty_like[T](self.rows, self.cols)
+        row = 0
+        while row < self.rows:
+            col = 0
+            while col < self.cols:
+                out[row, col] = self[row, col] + value
+                col += 1
+            row += 1
+        return out
+
+    @operator("[]=")
+    def set_column_view(self, rows: slice, col: i32, values: Tensor[T]):
+        row_start = slice_start(rows)
+        row_step = slice_step(rows)
+        row_count = slice_count(rows, self.rows)
+        row = 0
+        while row < row_count:
+            self[row_start + (row * row_step), col] = values[row, 0]
+            row += 1
 
     def to_tensor(self) -> Tensor[T]:
         out = empty_like[T](self.rows, self.cols)

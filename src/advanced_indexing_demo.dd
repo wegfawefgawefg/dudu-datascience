@@ -43,10 +43,7 @@ def run_advanced_indexing_demo() -> i32:
     ])
     assert_close(selected, expected_selected)
 
-    row = 0
-    while row < selected.rows:
-        selected[row, 0] = selected[row, 0] + 10.0
-        row += 1
+    selected[:, 0] = selected[:, 0] + 10.0
     logits[mask, :] = selected
     assert_close(logits[1, 0], 15.0)
     assert_close(logits[3, 0], 310.0)

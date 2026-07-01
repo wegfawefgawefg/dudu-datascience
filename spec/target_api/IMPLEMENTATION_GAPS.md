@@ -106,8 +106,10 @@ Broadcasting must be implemented as library overloads/lazy expressions, not as
 compiler tensor rules.
 
 Runnable status: `Tensor + Tensor` supports a small row/column broadcasting
-slice. `TensorView + scalar`, lazy expressions, and broader elementwise
-composition remain target work.
+slice. `TensorView + scalar` and column-slice scatter are now covered by the
+target-style `selected[:, 0] = selected[:, 0] + 10.0` expression in
+`src/advanced_indexing_demo.dd`. Lazy expressions, activation helpers, and
+broader elementwise composition remain target work.
 
 ## 6. Native Backend Modules
 
