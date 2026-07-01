@@ -35,8 +35,9 @@ dudu run --timings
 `src/hook_demos.dd` shows library-defined indexing:
 
 - scalar hooks: `tensor[i]`
-- pairwise gather/scatter hooks: `tensor.vindex[rows, cols]`
-- orthogonal/cartesian gather/scatter hooks: `tensor.oindex[rows, cols]`
+- pairwise gather/scatter through an indexer object: `tensor.vindex[rows, cols]`
+- orthogonal/cartesian gather/scatter through an indexer object: `tensor.oindex[rows, cols]`
+- no compiler-owned `vindex[]` or `oindex[]` operators are required
 
 `src/tensor_demos.dd` shows a tiny tensor-like type:
 
