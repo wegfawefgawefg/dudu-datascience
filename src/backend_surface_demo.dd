@@ -1,0 +1,32 @@
+from dudu_tensor import Tensor
+from dudu_tensor import arange
+from dudu_tensor import assert_close
+from dudu_tensor import assert_tensor_close
+from dudu_tensor import matmul_openblas
+from dudu_tensor import ones
+from dudu_tensor.backends import CpuBackend as cpu
+from dudu_tensor.backends import OpenBlasBackend as openblas
+from print_utils import section
+from print_utils import show_f32
+
+
+def run_backend_surface_demo() -> i32:
+    section("backend boundary surface: cpu/openblas markers")
+    x = arange[f32](2, 3).to(cpu.default())
+    w = ones[f32](3, 2).to(openblas.default())
+
+    pure = x.to(cpu.default()).matmul(w.to(cpu.default()))
+    accelerated = matmul_openblas(x.cpu(), w.cpu())
+    shaped: Tensor[f32][2, 2] = accelerated.assume_shape[2, 2]()
+
+    assert_tensor_close(pure, shaped)
+    show_f32("backend shaped[0, 0]", 3.0, shaped[0, 0])
+    show_f32("backend shaped[1, 1]", 12.0, shaped[1, 1])
+
+    view = shaped.as_array_view()
+    assert_close(f32(view[0]), shaped[0, 0])
+
+    copied = shaped.to_array()
+    assert_close(f32(copied[3]), shaped[1, 1])
+
+    return i32(shaped[0, 0] + shaped[1, 1]) + 27

@@ -134,6 +134,12 @@ class Tensor[T]:
     def assume_shape[Rows, Cols](self) -> Tensor[T][Rows, Cols]:
         return Tensor[T](self.rows, self.cols, self.data)
 
+    def to[Device](self, device: Device) -> Tensor[T]:
+        return Tensor[T](self.rows, self.cols, self.data)
+
+    def cpu(self) -> Tensor[T]:
+        return Tensor[T](self.rows, self.cols, self.data)
+
     def matmul(self, right: Tensor[T]) -> Tensor[T]:
         out = empty_like[T](self.rows, right.cols)
         row = 0

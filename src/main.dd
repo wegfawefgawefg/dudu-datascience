@@ -1,4 +1,5 @@
 from array_demos import run_array_demos
+from backend_surface_demo import run_backend_surface_demo
 from blas_demos import run_blas_demos
 from hook_demos import run_hook_demos
 from print_utils import section
@@ -14,7 +15,8 @@ def main() -> i32:
     tensor_score = run_tensor_demos()
     blas_score = run_blas_demos()
     surface_score = run_tensor_surface_demo()
-    total = array_score + hook_score + tensor_score + blas_score + surface_score
+    backend_surface_score = run_backend_surface_demo()
+    total = array_score + hook_score + tensor_score + blas_score + surface_score + backend_surface_score
 
     section("summary")
     show_i32("array demo score", 4627, array_score)
@@ -22,7 +24,8 @@ def main() -> i32:
     show_i32("tensor demo score", 42, tensor_score)
     show_i32("blas demo score", 42, blas_score)
     show_i32("tensor surface score", 41, surface_score)
-    show_i32("total score", 4841, total)
-    if total != 4841:
+    show_i32("backend surface score", 42, backend_surface_score)
+    show_i32("total score", 4883, total)
+    if total != 4883:
         return 1
     return 0
