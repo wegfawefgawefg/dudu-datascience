@@ -5,15 +5,18 @@ those files compile and run without compiler-owned tensor policy.
 
 ## 1. Reusable Tensor Library
 
-The runnable demos use `src/dudu_tensor.dd` for early dogfood, but its current
-core view/storage shape is not the final tensor architecture. The rank-2
-`rows`/`cols` model must be replaced with rank-generic `shape`, `strides`, and
-`offset` metadata before this library is treated as a viable tensor foundation.
+The runnable demos use `src/dudu_tensor.dd` for early dogfood. The current
+module now stores `Tensor[T]` and `TensorView[T]` with rank-generic `shape`,
+`strides`, and `offset` metadata. `rows` and `cols` remain as rank-2
+conveniences for existing demos and BLAS interop, not the core indexing
+representation.
 
 The current module provides:
 
-- `Tensor[T]` owning CPU storage with runtime `rows`/`cols`
-- `TensorView[T]` borrowing CPU storage for rank-2 row/column/patch slices
+- `Tensor[T]` owning CPU storage with runtime `shape`, `strides`, `offset`,
+  and rank-2 `rows`/`cols` convenience fields
+- `TensorView[T]` borrowing CPU storage with runtime `shape`, `strides`, and
+  `offset`
 - `zeros`, `ones`, `full`, `arange`, `randn`
 - `from_list`, `from_nested`
 - `assert_close`, `print_tensor`
@@ -23,11 +26,10 @@ The current module provides:
 
 The remaining target API still needs:
 
-- `Tensor[T]` core representation based on `shape`, `strides`, and `offset`
-- `TensorView[T]` core representation based on `shape`, `strides`, and `offset`
 - `Tensor[T][shape]` owning CPU storage
 - `TensorView[T][shape]` borrowing storage
-- rank 1, 2, 3, and 4 indexing/slicing through the same implementation path
+- more complete rank 1, 2, 3, and 4 indexing/slicing coverage through the same
+  implementation path
 - broader reductions and metrics needed by examples
 
 Construction and testing helpers should prefer module-level functions such as
@@ -73,9 +75,9 @@ currently carries compile-time metadata while preserving normal runtime
 `rows`/`cols`; broader shape propagation and diagnostics remain compiler and
 library work.
 
-The next tensor-library correction is to make shape metadata match runtime
-storage metadata. `rows`/`cols` can remain as rank-2 helpers, but they cannot be
-the foundation.
+Shape metadata now matches runtime storage metadata for the runnable CPU tensor
+slice. Remaining work is to remove rank-2 assumptions from more convenience
+helpers and make richer shape diagnostics visible in compiler/LSP output.
 
 The compiler should provide general shape metadata and diagnostics. Tensor
 layout, allocation, and backend behavior stay in library code.
@@ -104,6 +106,10 @@ gather/scatter, `tensor.oindex[rows, cols]` cartesian gather, and
 both `tiles = tensor.window[height, width]; tiles[row, col]` and direct
 chained `tensor.window[height, width][row, col]` indexing. Sparse COO indexers
 and richer window policies remain target work.
+
+`src/shape_stride_demo.dd` additionally proves rank-3 and rank-4 tensor views
+over the same shape/stride/offset metadata: `image[:, :, 1]` and
+`hyper[:, 1, :, 0]`.
 
 ## 5. Broadcasting And Elementwise Ops
 

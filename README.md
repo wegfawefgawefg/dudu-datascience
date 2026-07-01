@@ -82,6 +82,13 @@ slice into reusable `dudu_tensor` code:
 - column-slice scalar update: `selected[:, 0] = selected[:, 0] + 10.0`
 - chained window tiles: `logits.window[2, 2][1, 2]`
 
+`src/shape_stride_demo.dd` checks the corrected tensor storage model:
+
+- `Tensor` and `TensorView` carry `shape`, `strides`, and `offset`
+- rank-3 view: `image[:, :, 1]`
+- rank-4 view: `hyper[:, 1, :, 0]`
+- `rows` and `cols` remain rank-2 conveniences over the metadata
+
 `src/activation_metrics_demo.dd` graduates the first activation/loss target
 slice:
 
@@ -106,6 +113,7 @@ src/backend_surface_demo.dd backend marker and materialization boundaries
 src/blas_backend_demo.dd target-style BLAS backend boundary
 src/blas_demos.dd    OpenBLAS-backed matrix multiply
 src/hook_demos.dd    user-defined indexing operators
+src/shape_stride_demo.dd rank-3/rank-4 shape-stride view checks
 src/tensor_demos.dd  small tensor-style mask demo
 src/dudu_tensor.dd   reusable Tensor/TensorView/indexer slice
 src/print_utils.dd   tiny print helpers

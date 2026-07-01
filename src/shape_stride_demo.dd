@@ -1,0 +1,25 @@
+from dudu_tensor import arange_shape
+from dudu_tensor import assert_close
+from dudu_tensor import shape3
+from dudu_tensor import shape4
+from dudu_tensor import sum_view
+from print_utils import section
+from print_utils import show_f32
+
+
+def run_shape_stride_demo() -> i32:
+    section("rank-generic tensor shape/stride views")
+
+    image = arange_shape[f32](shape3(2, 2, 3))
+    green = image[:, :, 1]
+    green_sum = sum_view(green)
+    assert_close(green_sum, 22.0)
+    show_f32("sum rank-3 image[:, :, 1]", 22.0, green_sum)
+
+    hyper = arange_shape[f32](shape4(2, 2, 2, 2))
+    slab = hyper[:, 1, :, 0]
+    slab_sum = sum_view(slab)
+    assert_close(slab_sum, 36.0)
+    show_f32("sum rank-4 hyper[:, 1, :, 0]", 36.0, slab_sum)
+
+    return 42

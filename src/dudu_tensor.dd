@@ -33,6 +33,117 @@ class Mask:
         return total
 
 
+def shape2(rows: i32, cols: i32) -> list[i32]:
+    shape: list[i32] = []
+    shape.append(rows)
+    shape.append(cols)
+    return shape
+
+
+def shape3(a: i32, b: i32, c: i32) -> list[i32]:
+    shape = shape2(a, b)
+    shape.append(c)
+    return shape
+
+
+def shape4(a: i32, b: i32, c: i32, d: i32) -> list[i32]:
+    shape = shape3(a, b, c)
+    shape.append(d)
+    return shape
+
+
+def copy_shape(input: list[i32]) -> list[i32]:
+    out: list[i32] = []
+    i = 0
+    while i < i32(len(input)):
+        out.append(input[i])
+        i += 1
+    return out
+
+
+def shape_dim(shape: list[i32], axis: i32) -> i32:
+    if axis < i32(len(shape)):
+        return shape[axis]
+    return 1
+
+
+def shape_total(shape: list[i32]) -> i32:
+    total = 1
+    i = 0
+    while i < i32(len(shape)):
+        total *= shape[i]
+        i += 1
+    return total
+
+
+def contiguous_strides(shape: list[i32]) -> list[i32]:
+    strides: list[i32] = []
+    i = 0
+    while i < i32(len(shape)):
+        strides.append(1)
+        i += 1
+
+    stride = 1
+    axis = i32(len(shape)) - 1
+    while axis >= 0:
+        strides[axis] = stride
+        stride *= shape[axis]
+        axis -= 1
+    return strides
+
+
+def offset_at2(base: i32, strides: list[i32], row: i32, col: i32) -> i32:
+    return base + (row * strides[0]) + (col * strides[1])
+
+
+def offset_at3(base: i32, strides: list[i32], a: i32, b: i32, c: i32) -> i32:
+    return base + (a * strides[0]) + (b * strides[1]) + (c * strides[2])
+
+
+def offset_at4(base: i32, strides: list[i32], a: i32, b: i32, c: i32, d: i32) -> i32:
+    return base + (a * strides[0]) + (b * strides[1]) + (c * strides[2]) + (d * strides[3])
+
+
+def view2[T](data: *list[T], offset: i32, rows: i32, cols: i32, row_stride: i32, col_stride: i32) -> TensorView[T]:
+    return TensorView[T](data, offset, shape2(rows, cols), shape2(row_stride, col_stride))
+
+
+def view1[T](data: *list[T], offset: i32, count: i32, stride: i32) -> TensorView[T]:
+    shape: list[i32] = []
+    shape.append(count)
+    strides: list[i32] = []
+    strides.append(stride)
+    return TensorView[T](data, offset, shape, strides)
+
+
+def view3[T](
+    data: *list[T],
+    offset: i32,
+    a: i32,
+    b: i32,
+    c: i32,
+    stride_a: i32,
+    stride_b: i32,
+    stride_c: i32,
+) -> TensorView[T]:
+    return TensorView[T](data, offset, shape3(a, b, c), shape3(stride_a, stride_b, stride_c))
+
+
+def view4[T](
+    data: *list[T],
+    offset: i32,
+    a: i32,
+    b: i32,
+    c: i32,
+    d: i32,
+    stride_a: i32,
+    stride_b: i32,
+    stride_c: i32,
+    stride_d: i32,
+) -> TensorView[T]:
+    return TensorView[T](data, offset, shape4(a, b, c, d), shape4(stride_a, stride_b, stride_c, stride_d))
+
+
 class VIndex[T]:
     data: *list[T]
     rows: i32
@@ -118,22 +229,52 @@ class TensorWindow[T]:
 
 
 class TensorView[T]:
-    data: &list[T]
+    data: *list[T]
     offset: i32
+    shape: list[i32]
+    strides: list[i32]
     rows: i32
     cols: i32
-    row_stride: i32
-    col_stride: i32
+
+    def init(self, data: *list[T], offset: i32, shape: list[i32], strides: list[i32]):
+        self.data = data
+        self.offset = offset
+        self.shape = copy_shape(shape)
+        self.strides = copy_shape(strides)
+        self.rows = shape_dim(shape, 0)
+        self.cols = shape_dim(shape, 1)
 
     @operator("[]")
     def at(self, row: i32, col: i32) -> T:
-        index = self.offset + (row * self.row_stride) + (col * self.col_stride)
-        return self.data[index]
+        return (*self.data)[offset_at2(self.offset, self.strides, row, col)]
+
+    @operator("[]")
+    def at1(self, index: i32) -> T:
+        return (*self.data)[self.offset + (index * self.strides[0])]
+
+    @operator("[]")
+    def at3(self, a: i32, b: i32, c: i32) -> T:
+        return (*self.data)[offset_at3(self.offset, self.strides, a, b, c)]
+
+    @operator("[]")
+    def at4(self, a: i32, b: i32, c: i32, d: i32) -> T:
+        return (*self.data)[offset_at4(self.offset, self.strides, a, b, c, d)]
 
     @operator("[]=")
     def set_at(self, row: i32, col: i32, value: T):
-        index = self.offset + (row * self.row_stride) + (col * self.col_stride)
-        self.data[index] = value
+        (*self.data)[offset_at2(self.offset, self.strides, row, col)] = value
+
+    @operator("[]=")
+    def set_at1(self, index: i32, value: T):
+        (*self.data)[self.offset + (index * self.strides[0])] = value
+
+    @operator("[]=")
+    def set_at3(self, a: i32, b: i32, c: i32, value: T):
+        (*self.data)[offset_at3(self.offset, self.strides, a, b, c)] = value
+
+    @operator("[]=")
+    def set_at4(self, a: i32, b: i32, c: i32, d: i32, value: T):
+        (*self.data)[offset_at4(self.offset, self.strides, a, b, c, d)] = value
 
     def fill(self, value: T):
         row = 0
@@ -171,6 +312,9 @@ class TensorView[T]:
 class Tensor[T]:
     rows: i32
     cols: i32
+    offset: i32
+    shape: list[i32]
+    strides: list[i32]
     data: list[T]
     vindex: VIndex[T]
     oindex: OIndex[T]
@@ -179,6 +323,9 @@ class Tensor[T]:
     def init(self, rows: i32, cols: i32, data: list[T]):
         self.rows = rows
         self.cols = cols
+        self.offset = 0
+        self.shape = shape2(rows, cols)
+        self.strides = contiguous_strides(self.shape)
         self.data = data
         self.vindex = VIndex[T](&self.data, rows, cols)
         self.oindex = OIndex[T](&self.data, rows, cols)
@@ -186,47 +333,101 @@ class Tensor[T]:
 
     @operator("[]")
     def at(self, row: i32, col: i32) -> T:
-        return self.data[(row * self.cols) + col]
+        return self.data[offset_at2(self.offset, self.strides, row, col)]
 
     @operator("[]=")
     def set_at(self, row: i32, col: i32, value: T):
-        self.data[(row * self.cols) + col] = value
+        self.data[offset_at2(self.offset, self.strides, row, col)] = value
+
+    @operator("[]")
+    def at1(self, index: i32) -> T:
+        return self.data[self.offset + (index * self.strides[0])]
+
+    @operator("[]")
+    def at3(self, a: i32, b: i32, c: i32) -> T:
+        return self.data[offset_at3(self.offset, self.strides, a, b, c)]
+
+    @operator("[]")
+    def at4(self, a: i32, b: i32, c: i32, d: i32) -> T:
+        return self.data[offset_at4(self.offset, self.strides, a, b, c, d)]
+
+    @operator("[]=")
+    def set_at1(self, index: i32, value: T):
+        self.data[self.offset + (index * self.strides[0])] = value
+
+    @operator("[]=")
+    def set_at3(self, a: i32, b: i32, c: i32, value: T):
+        self.data[offset_at3(self.offset, self.strides, a, b, c)] = value
+
+    @operator("[]=")
+    def set_at4(self, a: i32, b: i32, c: i32, d: i32, value: T):
+        self.data[offset_at4(self.offset, self.strides, a, b, c, d)] = value
 
     @operator("[]")
     def row_view(self, row: i32, cols: slice) -> TensorView[T]:
         col_start = slice_start(cols)
-        return TensorView[T](
-            self.data,
-            (row * self.cols) + col_start,
+        return view2[T](
+            &self.data,
+            self.offset + (row * self.strides[0]) + (col_start * self.strides[1]),
             1,
             slice_count(cols, self.cols),
-            self.cols,
-            slice_step(cols),
+            self.strides[0],
+            self.strides[1] * slice_step(cols),
         )
 
     @operator("[]")
     def column_view(self, rows: slice, col: i32) -> TensorView[T]:
         row_start = slice_start(rows)
-        return TensorView[T](
-            self.data,
-            (row_start * self.cols) + col,
+        return view2[T](
+            &self.data,
+            self.offset + (row_start * self.strides[0]) + (col * self.strides[1]),
             slice_count(rows, self.rows),
             1,
-            self.cols * slice_step(rows),
-            1,
+            self.strides[0] * slice_step(rows),
+            self.strides[1],
         )
 
     @operator("[]")
     def patch_view(self, rows: slice, cols: slice) -> TensorView[T]:
         row_start = slice_start(rows)
         col_start = slice_start(cols)
-        return TensorView[T](
-            self.data,
-            (row_start * self.cols) + col_start,
+        return view2[T](
+            &self.data,
+            self.offset + (row_start * self.strides[0]) + (col_start * self.strides[1]),
             slice_count(rows, self.rows),
             slice_count(cols, self.cols),
-            self.cols * slice_step(rows),
-            slice_step(cols),
+            self.strides[0] * slice_step(rows),
+            self.strides[1] * slice_step(cols),
+        )
+
+    @operator("[]")
+    def rank3_channel_view(self, a: slice, b: slice, c: i32) -> TensorView[T]:
+        a_start = slice_start(a)
+        b_start = slice_start(b)
+        return view2[T](
+            &self.data,
+            self.offset + (a_start * self.strides[0]) + (b_start * self.strides[1]) + (c * self.strides[2]),
+            slice_count(a, self.shape[0]),
+            slice_count(b, self.shape[1]),
+            self.strides[0] * slice_step(a),
+            self.strides[1] * slice_step(b),
+        )
+
+    @operator("[]")
+    def rank4_slice_view(self, a: slice, b: i32, c: slice, d: i32) -> TensorView[T]:
+        a_start = slice_start(a)
+        c_start = slice_start(c)
+        return view2[T](
+            &self.data,
+            self.offset
+                + (a_start * self.strides[0])
+                + (b * self.strides[1])
+                + (c_start * self.strides[2])
+                + (d * self.strides[3]),
+            slice_count(a, self.shape[0]),
+            slice_count(c, self.shape[2]),
+            self.strides[0] * slice_step(a),
+            self.strides[2] * slice_step(c),
         )
 
     @operator("[]")
@@ -315,7 +516,7 @@ class Tensor[T]:
         return out
 
     def as_array_view(self) -> TensorView[T]:
-        return TensorView[T](self.data, 0, self.rows, self.cols, self.cols, 1)
+        return TensorView[T](&self.data, self.offset, self.shape, self.strides)
 
     def to_array(self) -> Tensor[T]:
         out = empty_like[T](self.rows, self.cols)
@@ -329,13 +530,13 @@ class Tensor[T]:
         return out
 
     def assume_shape[Rows, Cols](self) -> Tensor[T][Rows, Cols]:
-        return Tensor[T](self.rows, self.cols, self.data)
+        return from_shape[T](self.shape, self.data)
 
     def to[Device](self, device: Device) -> Tensor[T]:
-        return Tensor[T](self.rows, self.cols, self.data)
+        return from_shape[T](self.shape, self.data)
 
     def cpu(self) -> Tensor[T]:
-        return Tensor[T](self.rows, self.cols, self.data)
+        return from_shape[T](self.shape, self.data)
 
     def matmul(self, right: Tensor[T]) -> Tensor[T]:
         out = empty_like[T](self.rows, right.cols)
@@ -450,6 +651,31 @@ def arange[T](rows: i32, cols: i32) -> Tensor[T]:
     return Tensor[T](rows, cols, data)
 
 
+def from_shape[T](shape: list[i32], values: list[T]) -> Tensor[T]:
+    rows = shape_dim(shape, 0)
+    cols = shape_dim(shape, 1)
+    out = Tensor[T](rows, cols, values)
+    out.shape = copy_shape(shape)
+    out.strides = contiguous_strides(out.shape)
+    out.offset = 0
+    out.rows = rows
+    out.cols = cols
+    out.vindex = VIndex[T](&out.data, rows, cols)
+    out.oindex = OIndex[T](&out.data, rows, cols)
+    out.window = TensorWindow[T](&out.data, rows, cols)
+    return out
+
+
+def arange_shape[T](shape: list[i32]) -> Tensor[T]:
+    data: list[T] = []
+    i = 0
+    total = shape_total(shape)
+    while i < total:
+        data.append(T(i))
+        i += 1
+    return from_shape[T](shape, data)
+
+
 def from_list[T](values: list[T]) -> Tensor[T]:
     data: list[T] = []
     i = 0
@@ -457,7 +683,7 @@ def from_list[T](values: list[T]) -> Tensor[T]:
     while i < total:
         data.append(values[i])
         i += 1
-    return Tensor[T](1, total, data)
+    return from_shape[T](shape2(1, total), data)
 
 
 def from_nested[T](values: list[list[T]]) -> Tensor[T]:
