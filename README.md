@@ -2,8 +2,9 @@
 
 Small runnable Dudu demos for array, slice, and tensor-style indexing.
 
-This is not a numeric library. It is a tour of the indexing forms that are
-useful for data science and ML-shaped code.
+This is not a production numeric library yet. It is a dogfood repo for the
+indexing forms and reusable tensor surface that are useful for data science and
+ML-shaped code.
 
 The `spec/target_api` directory contains aspirational Dudu code for the real
 tensor library we want. Those files are not part of the build yet; they are the
@@ -69,6 +70,15 @@ runnable check:
 - overloaded `assert_close` for tensors, views, and scalars
 - `logits.cpu()`, `as_array_view()`, and `to_array()` boundary checks
 
+`src/advanced_indexing_demo.dd` graduates the first advanced-indexing target
+slice into reusable `dudu_tensor` code:
+
+- `index_array([...])` and `bool_mask([...])`
+- pairwise gather/scatter: `logits.vindex[rows, cols]`
+- cartesian gather: `logits.oindex[rows, cols]`
+- runtime-shaped mask selection: `logits[mask, :]`
+- mask scatter assignment: `logits[mask, :] = selected`
+
 The BLAS demo needs `openblas` discoverable through `pkg-config`.
 
 Each section prints the intended result and the actual computed result. The
@@ -79,11 +89,13 @@ program exits nonzero if the final summary score drifts.
 ```text
 src/main.dd          entry point
 src/array_demos.dd   fixed arrays and slices
+src/advanced_indexing_demo.dd target-style index arrays, masks, vindex/oindex
 src/backend_surface_demo.dd backend marker and materialization boundaries
 src/blas_backend_demo.dd target-style BLAS backend boundary
 src/blas_demos.dd    OpenBLAS-backed matrix multiply
 src/hook_demos.dd    user-defined indexing operators
 src/tensor_demos.dd  small tensor-style mask demo
+src/dudu_tensor.dd   reusable Tensor/TensorView/indexer slice
 src/print_utils.dd   tiny print helpers
 spec/target_api/     desired tensor API examples, not built yet
 ```

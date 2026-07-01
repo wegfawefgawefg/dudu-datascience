@@ -5,14 +5,22 @@ those files compile and run without compiler-owned tensor policy.
 
 ## 1. Reusable Tensor Library
 
-Current demos define tiny local `Tensor` classes. The target API needs a real
-`dudu_tensor` library module with:
+The runnable demos now use a real `src/dudu_tensor.dd` module for the first
+slice of the target API. It currently provides:
+
+- `Tensor[T]` owning CPU storage with runtime `rows`/`cols`
+- `TensorView[T]` borrowing CPU storage for normal row/column/patch slices
+- `zeros`, `ones`, `full`, `arange`
+- `from_list`, `from_nested`
+- `assert_close`, `print_tensor`
+- `index_array`, `bool_mask`
+- `vindex` and `oindex` library indexer fields
+
+The remaining target API still needs:
 
 - `Tensor[T][shape]` owning CPU storage
 - `TensorView[T][shape]` borrowing storage
-- `zeros`, `ones`, `full`, `arange`, `randn`
-- `from_list`, `from_nested`
-- `assert_close`, `print_tensor`
+- `randn`
 - reductions and metrics needed by examples
 
 Construction and testing helpers should prefer module-level functions such as
@@ -78,6 +86,12 @@ Required semantics:
 - compound assignment only when the selected-value write hook is explicit
 - repeated-index scatter order is library policy
 
+Runnable status: `src/advanced_indexing_demo.dd` now covers reusable
+`index_array`, `bool_mask`, `tensor.vindex[rows, cols]` pairwise
+gather/scatter, `tensor.oindex[rows, cols]` cartesian gather, and
+`tensor[mask, :]` selection/scatter. Window/tiling indexers and chained window
+temporaries remain target work.
+
 ## 5. Broadcasting And Elementwise Ops
 
 Target code uses:
@@ -88,6 +102,10 @@ Target code uses:
 
 Broadcasting must be implemented as library overloads/lazy expressions, not as
 compiler tensor rules.
+
+Runnable status: `Tensor + Tensor` supports a small row/column broadcasting
+slice. `TensorView + scalar`, lazy expressions, and broader elementwise
+composition remain target work.
 
 ## 6. Native Backend Modules
 

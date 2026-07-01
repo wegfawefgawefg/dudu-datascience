@@ -1,0 +1,56 @@
+from dudu_tensor import Tensor
+from dudu_tensor import arange
+from dudu_tensor import assert_close
+from dudu_tensor import bool_mask
+from dudu_tensor import from_list
+from dudu_tensor import from_nested
+from dudu_tensor import index_array
+from dudu_tensor import print_tensor
+from print_utils import section
+from print_utils import show_i32
+
+
+def run_advanced_indexing_demo() -> i32:
+    section("advanced indexing: pairwise, cartesian, mask")
+    logits = arange[f32](4, 5)
+    rows = index_array([0, 2, 3])
+    cols = index_array([1, 4, 0])
+
+    pairwise = logits.vindex[rows, cols]
+    pairwise_expected: Tensor[f32][3] = from_list[f32]([1.0, 14.0, 15.0])
+    assert_close(pairwise, pairwise_expected)
+    print_tensor("pairwise logits.vindex[rows, cols]", pairwise)
+
+    logits.vindex[rows, cols] = from_list[f32]([100.0, 200.0, 300.0])
+    assert_close(logits[0, 1], 100.0)
+    assert_close(logits[2, 4], 200.0)
+    assert_close(logits[3, 0], 300.0)
+
+    grid = logits.oindex[rows, cols]
+    expected_grid: Tensor[f32][3, 3] = from_nested[f32]([
+        [100.0, 4.0, 0.0],
+        [11.0, 200.0, 10.0],
+        [16.0, 19.0, 300.0],
+    ])
+    assert_close(grid, expected_grid)
+    print_tensor("cartesian logits.oindex[rows, cols]", grid)
+
+    mask = bool_mask([False, True, False, True])
+    selected: Tensor[f32][dyn, 5] = logits[mask, :]
+    expected_selected: Tensor[f32][2, 5] = from_nested[f32]([
+        [5.0, 6.0, 7.0, 8.0, 9.0],
+        [300.0, 16.0, 17.0, 18.0, 19.0],
+    ])
+    assert_close(selected, expected_selected)
+
+    row = 0
+    while row < selected.rows:
+        selected[row, 0] = selected[row, 0] + 10.0
+        row += 1
+    logits[mask, :] = selected
+    assert_close(logits[1, 0], 15.0)
+    assert_close(logits[3, 0], 310.0)
+
+    score = i32(pairwise[0, 0] + grid[1, 1] + logits[3, 0]) - 469
+    show_i32("advanced indexing score", 42, score)
+    return score

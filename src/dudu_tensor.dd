@@ -1,6 +1,89 @@
 from c import cblas.h as blas
 
 
+class IndexArray:
+    data: list[i32]
+
+    @operator("[]")
+    def at(self, index: i32) -> i32:
+        return self.data[index]
+
+    def count(self) -> i32:
+        return i32(len(self.data))
+
+
+class Mask:
+    data: list[bool]
+
+    @operator("[]")
+    def at(self, index: i32) -> bool:
+        return self.data[index]
+
+    def count(self) -> i32:
+        return i32(len(self.data))
+
+    def count_true(self) -> i32:
+        total = 0
+        i = 0
+        while i < self.count():
+            if self[i]:
+                total += 1
+            i += 1
+        return total
+
+
+class VIndex[T]:
+    data: *list[T]
+    rows: i32
+    cols: i32
+
+    @operator("[]")
+    def pairwise(self, rows: IndexArray, cols: IndexArray) -> Tensor[T]:
+        count = rows.count()
+        out = empty_like[T](1, count)
+        i = 0
+        while i < count:
+            out[0, i] = (*self.data)[(rows[i] * self.cols) + cols[i]]
+            i += 1
+        return out
+
+    @operator("[]=")
+    def set_pairwise(self, rows: IndexArray, cols: IndexArray, values: Tensor[T]):
+        count = rows.count()
+        i = 0
+        while i < count:
+            (*self.data)[(rows[i] * self.cols) + cols[i]] = values[0, i]
+            i += 1
+
+
+class OIndex[T]:
+    data: *list[T]
+    rows: i32
+    cols: i32
+
+    @operator("[]")
+    def cartesian(self, rows: IndexArray, cols: IndexArray) -> Tensor[T]:
+        out = empty_like[T](rows.count(), cols.count())
+        row = 0
+        while row < rows.count():
+            col = 0
+            while col < cols.count():
+                out[row, col] = (*self.data)[(rows[row] * self.cols) + cols[col]]
+                col += 1
+            row += 1
+        return out
+
+    @operator("[]=")
+    def set_cartesian(self, rows: IndexArray, cols: IndexArray, values: Tensor[T]):
+        row = 0
+        while row < rows.count():
+            col = 0
+            while col < cols.count():
+                (*self.data)[(rows[row] * self.cols) + cols[col]] = values[row, col]
+                col += 1
+            row += 1
+
+
 class TensorView[T]:
     data: &list[T]
     offset: i32
@@ -44,6 +127,15 @@ class Tensor[T]:
     rows: i32
     cols: i32
     data: list[T]
+    vindex: VIndex[T]
+    oindex: OIndex[T]
+
+    def init(self, rows: i32, cols: i32, data: list[T]):
+        self.rows = rows
+        self.cols = cols
+        self.data = data
+        self.vindex = VIndex[T](&self.data, rows, cols)
+        self.oindex = OIndex[T](&self.data, rows, cols)
 
     @operator("[]")
     def at(self, row: i32, col: i32) -> T:
@@ -89,6 +181,40 @@ class Tensor[T]:
             self.cols * slice_step(rows),
             slice_step(cols),
         )
+
+    @operator("[]")
+    def masked_rows(self, mask: Mask, cols: slice) -> Tensor[T]:
+        col_start = slice_start(cols)
+        col_step = slice_step(cols)
+        col_count = slice_count(cols, self.cols)
+        out = empty_like[T](mask.count_true(), col_count)
+        out_row = 0
+        row = 0
+        while row < mask.count():
+            if mask[row]:
+                col = 0
+                while col < col_count:
+                    out[out_row, col] = self[row, col_start + (col * col_step)]
+                    col += 1
+                out_row += 1
+            row += 1
+        return out
+
+    @operator("[]=")
+    def set_masked_rows(self, mask: Mask, cols: slice, values: Tensor[T]):
+        col_start = slice_start(cols)
+        col_step = slice_step(cols)
+        col_count = slice_count(cols, self.cols)
+        value_row = 0
+        row = 0
+        while row < mask.count():
+            if mask[row]:
+                col = 0
+                while col < col_count:
+                    self[row, col_start + (col * col_step)] = values[value_row, col]
+                    col += 1
+                value_row += 1
+            row += 1
 
     @operator("+")
     def add(self, other: Tensor[T]) -> Tensor[T]:
@@ -183,6 +309,24 @@ def slice_count(value: slice, limit: i32) -> i32:
     if stop <= start:
         return 0
     return ((stop - start) + step - 1) / step
+
+
+def index_array(values: list[i32]) -> IndexArray:
+    data: list[i32] = []
+    i = 0
+    while i < i32(len(values)):
+        data.append(values[i])
+        i += 1
+    return IndexArray(data)
+
+
+def bool_mask(values: list[bool]) -> Mask:
+    data: list[bool] = []
+    i = 0
+    while i < i32(len(values)):
+        data.append(values[i])
+        i += 1
+    return Mask(data)
 
 
 def empty_like[T](rows: i32, cols: i32) -> Tensor[T]:
