@@ -1,0 +1,357 @@
+from c import cblas.h as blas
+
+
+class TensorView[T]:
+    data: &list[T]
+    offset: i32
+    rows: i32
+    cols: i32
+    row_stride: i32
+    col_stride: i32
+
+    @operator("[]")
+    def at(self, row: i32, col: i32) -> T:
+        index = self.offset + (row * self.row_stride) + (col * self.col_stride)
+        return self.data[index]
+
+    @operator("[]=")
+    def set_at(self, row: i32, col: i32, value: T):
+        index = self.offset + (row * self.row_stride) + (col * self.col_stride)
+        self.data[index] = value
+
+    def fill(self, value: T):
+        row = 0
+        while row < self.rows:
+            col = 0
+            while col < self.cols:
+                self[row, col] = value
+                col += 1
+            row += 1
+
+    def to_tensor(self) -> Tensor[T]:
+        out = empty_like[T](self.rows, self.cols)
+        row = 0
+        while row < self.rows:
+            col = 0
+            while col < self.cols:
+                out[row, col] = self[row, col]
+                col += 1
+            row += 1
+        return out
+
+
+class Tensor[T]:
+    rows: i32
+    cols: i32
+    data: list[T]
+
+    @operator("[]")
+    def at(self, row: i32, col: i32) -> T:
+        return self.data[(row * self.cols) + col]
+
+    @operator("[]=")
+    def set_at(self, row: i32, col: i32, value: T):
+        self.data[(row * self.cols) + col] = value
+
+    @operator("[]")
+    def row_view(self, row: i32, cols: slice) -> TensorView[T]:
+        col_start = slice_start(cols)
+        return TensorView[T](
+            self.data,
+            (row * self.cols) + col_start,
+            1,
+            slice_count(cols, self.cols),
+            self.cols,
+            slice_step(cols),
+        )
+
+    @operator("[]")
+    def column_view(self, rows: slice, col: i32) -> TensorView[T]:
+        row_start = slice_start(rows)
+        return TensorView[T](
+            self.data,
+            (row_start * self.cols) + col,
+            slice_count(rows, self.rows),
+            1,
+            self.cols * slice_step(rows),
+            1,
+        )
+
+    @operator("[]")
+    def patch_view(self, rows: slice, cols: slice) -> TensorView[T]:
+        row_start = slice_start(rows)
+        col_start = slice_start(cols)
+        return TensorView[T](
+            self.data,
+            (row_start * self.cols) + col_start,
+            slice_count(rows, self.rows),
+            slice_count(cols, self.cols),
+            self.cols * slice_step(rows),
+            slice_step(cols),
+        )
+
+    @operator("+")
+    def add(self, other: Tensor[T]) -> Tensor[T]:
+        out = empty_like[T](self.rows, self.cols)
+        row = 0
+        while row < self.rows:
+            col = 0
+            while col < self.cols:
+                right_row = row
+                if other.rows == 1:
+                    right_row = 0
+                right_col = col
+                if other.cols == 1:
+                    right_col = 0
+                out[row, col] = self[row, col] + other[right_row, right_col]
+                col += 1
+            row += 1
+        return out
+
+    def to_tensor(self) -> Tensor[T]:
+        out = empty_like[T](self.rows, self.cols)
+        row = 0
+        while row < self.rows:
+            col = 0
+            while col < self.cols:
+                out[row, col] = self[row, col]
+                col += 1
+            row += 1
+        return out
+
+    def as_array_view(self) -> &list[T]:
+        return self.data
+
+    def to_array(self) -> list[T]:
+        out: list[T] = []
+        index = 0
+        total = i32(len(self.data))
+        while index < total:
+            out.append(self.data[index])
+            index += 1
+        return out
+
+def slice_start(value: slice) -> i32:
+    if value.has_start:
+        return i32(value.start)
+    return 0
+
+
+def slice_end(value: slice, limit: i32) -> i32:
+    if value.has_end:
+        return i32(value.end)
+    return limit
+
+
+def slice_step(value: slice) -> i32:
+    if value.has_step:
+        return i32(value.step)
+    return 1
+
+
+def slice_count(value: slice, limit: i32) -> i32:
+    start = slice_start(value)
+    stop = slice_end(value, limit)
+    step = slice_step(value)
+    if stop <= start:
+        return 0
+    return ((stop - start) + step - 1) / step
+
+
+def empty_like[T](rows: i32, cols: i32) -> Tensor[T]:
+    data: list[T] = []
+    i = 0
+    while i < rows * cols:
+        data.append(T(0))
+        i += 1
+    return Tensor[T](rows, cols, data)
+
+
+def zeros[T](rows: i32, cols: i32) -> Tensor[T]:
+    return full[T](rows, cols, T(0))
+
+
+def ones[T](rows: i32, cols: i32) -> Tensor[T]:
+    return full[T](rows, cols, T(1))
+
+
+def full[T](rows: i32, cols: i32, value: T) -> Tensor[T]:
+    data: list[T] = []
+    i = 0
+    while i < rows * cols:
+        data.append(value)
+        i += 1
+    return Tensor[T](rows, cols, data)
+
+
+def arange[T](rows: i32, cols: i32) -> Tensor[T]:
+    data: list[T] = []
+    i = 0
+    while i < rows * cols:
+        data.append(T(i))
+        i += 1
+    return Tensor[T](rows, cols, data)
+
+
+def from_list[T](values: list[T]) -> Tensor[T]:
+    data: list[T] = []
+    i = 0
+    total = i32(len(values))
+    while i < total:
+        data.append(values[i])
+        i += 1
+    return Tensor[T](1, total, data)
+
+
+def from_nested[T](values: list[list[T]]) -> Tensor[T]:
+    rows = i32(len(values))
+    cols = 0
+    if rows > 0:
+        cols = i32(len(values[0]))
+    out = empty_like[T](rows, cols)
+    row = 0
+    while row < rows:
+        col = 0
+        while col < cols:
+            out[row, col] = values[row][col]
+            col += 1
+        row += 1
+    return out
+
+
+def clone[T](input: Tensor[T]) -> Tensor[T]:
+    out = empty_like[T](input.rows, input.cols)
+    row = 0
+    while row < input.rows:
+        col = 0
+        while col < input.cols:
+            out[row, col] = input[row, col]
+            col += 1
+        row += 1
+    return out
+
+
+def add(left: Tensor[f32], right: Tensor[f32]) -> Tensor[f32]:
+    out = zeros[f32](left.rows, left.cols)
+    row = 0
+    while row < left.rows:
+        col = 0
+        while col < left.cols:
+            right_row = row
+            if right.rows == 1:
+                right_row = 0
+            right_col = col
+            if right.cols == 1:
+                right_col = 0
+            out[row, col] = left[row, col] + right[right_row, right_col]
+            col += 1
+        row += 1
+    return out
+
+
+def scale(input: Tensor[f32], factor: f32) -> Tensor[f32]:
+    out = zeros[f32](input.rows, input.cols)
+    row = 0
+    while row < input.rows:
+        col = 0
+        while col < input.cols:
+            out[row, col] = input[row, col] * factor
+            col += 1
+        row += 1
+    return out
+
+
+def matmul(left: Tensor[f32], right: Tensor[f32]) -> Tensor[f32]:
+    out = zeros[f32](left.rows, right.cols)
+    row = 0
+    while row < left.rows:
+        col = 0
+        while col < right.cols:
+            acc: f32 = 0.0
+            k = 0
+            while k < left.cols:
+                acc += left[row, k] * right[k, col]
+                k += 1
+            out[row, col] = acc
+            col += 1
+        row += 1
+    return out
+
+
+def matmul_openblas(left: Tensor[f32], right: Tensor[f32]) -> Tensor[f32]:
+    out = zeros[f32](left.rows, right.cols)
+    blas.cblas_sgemm(
+        blas.CblasRowMajor,
+        blas.CblasNoTrans,
+        blas.CblasNoTrans,
+        left.rows,
+        right.cols,
+        left.cols,
+        1.0,
+        &left.data[0],
+        left.cols,
+        &right.data[0],
+        right.cols,
+        0.0,
+        &out.data[0],
+        out.cols,
+    )
+    return out
+
+
+def sum_values(input: Tensor[f32]) -> f32:
+    total: f32 = 0.0
+    row = 0
+    while row < input.rows:
+        col = 0
+        while col < input.cols:
+            total += input[row, col]
+            col += 1
+        row += 1
+    return total
+
+
+def sum_view(input: TensorView[f32]) -> f32:
+    total: f32 = 0.0
+    row = 0
+    while row < input.rows:
+        col = 0
+        while col < input.cols:
+            total += input[row, col]
+            col += 1
+        row += 1
+    return total
+
+
+def print_tensor(label: str, input: Tensor[f32]):
+    print(label)
+    row = 0
+    while row < input.rows:
+        col = 0
+        while col < input.cols:
+            print(input[row, col])
+            col += 1
+        row += 1
+
+
+def assert_close(actual: f32, expected: f32):
+    diff = actual - expected
+    if diff < 0.0:
+        diff = 0.0 - diff
+    assert diff <= 0.001, "tensor scalar mismatch"
+
+
+def assert_tensor_close(actual: Tensor[f32], expected: Tensor[f32]):
+    if actual.rows != expected.rows or actual.cols != expected.cols:
+        assert False, "tensor shape mismatch"
+    row = 0
+    while row < actual.rows:
+        col = 0
+        while col < actual.cols:
+            assert_close(actual[row, col], expected[row, col])
+            col += 1
+        row += 1
+
+
+def assert_view_close(actual: TensorView[f32], expected: Tensor[f32]):
+    assert_tensor_close(actual.to_tensor(), expected)
