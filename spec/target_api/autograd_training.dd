@@ -4,7 +4,6 @@ from dudu_tensor import randn
 from dudu_tensor import relu
 from dudu_tensor import sigmoid
 from dudu_tensor.autograd import Parameter
-from dudu_tensor.autograd import Tape
 from dudu_tensor.datasets import xor_inputs
 from dudu_tensor.datasets import xor_targets
 from dudu_tensor.optim import sgd
@@ -17,8 +16,8 @@ class Mlp:
     b2: Parameter[f32][1, 1]
 
     def forward(self, x: Tensor[f32][dyn, 2]) -> Tensor[f32][dyn, 1]:
-        hidden = relu(x.matmul(self.w1.value) + self.b1.value)
-        return sigmoid(hidden.matmul(self.w2.value) + self.b2.value)
+        hidden = relu(x.matmul(self.w1) + self.b1)
+        return sigmoid(hidden.matmul(self.w2) + self.b2)
 
 
 def main() -> i32:
@@ -34,10 +33,9 @@ def main() -> i32:
 
     epoch = 0
     while epoch < 200:
-        tape = Tape()
-        pred = tape.track(model.forward(x))
+        pred = model.forward(x)
         loss = mse_loss(pred, y)
-        tape.backward(loss)
+        loss.backward()
         opt.step()
         opt.zero_grad()
         epoch += 1

@@ -93,14 +93,16 @@ RAII boundaries. CUDA/cuBLAS is not required on this AMD machine.
 `autograd_training.dd` requires:
 
 - `Parameter[T][shape]`
-- `Tape`
-- tracked tensor operations
-- `backward`
+- parameters usable directly in tensor operations
+- internally tracked tensor operations
+- `loss.backward()`
 - SGD optimizer
 - simple loss/activation helpers
 
-This should be a Dudu library prototype. The compiler should only need normal
-classes, enums, references, generics, operator overloads, and diagnostics.
+This should feel PyTorch-like at the user level. Tape/graph bookkeeping may
+exist inside the library, but target user code should not instantiate a public
+`Tape` just to train a model. The compiler should only need normal classes,
+enums, references, generics, operator overloads, and diagnostics.
 
 ## 8. Editor And Diagnostics
 
@@ -121,4 +123,3 @@ A target file graduates into `src/` when it:
 2. runs and prints/verifies expected values
 3. does not require compiler special cases for tensor/library names
 4. has any required compiler behavior covered by fixtures in the Dudu repo
-
