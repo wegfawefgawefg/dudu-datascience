@@ -23,9 +23,9 @@ Current graduated targets:
 - `tensor_surface.dd` -> `dudu run target_tensor_surface`
 - `advanced_indexing.dd` -> `dudu run target_advanced_indexing`
 - `blas_backend.dd` -> `dudu run target_blas_backend`
+- `gpu_backend.dd` -> `dudu run target_gpu_backend`
 
 Current pending targets:
 
-- `gpu_backend.dd`: needs an OpenCL backend module and device storage
 - `autograd_training.dd`: needs autograd modules, parameters, callable
   modules, backward, and optimizers

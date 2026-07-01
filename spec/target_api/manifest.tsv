@@ -2,5 +2,5 @@
 tensor_surface.dd	graduated	target_tensor_surface
 advanced_indexing.dd	graduated	target_advanced_indexing
 blas_backend.dd	graduated	target_blas_backend
-gpu_backend.dd	pending	opencl backend module and device storage are not implemented
+gpu_backend.dd	graduated	target_gpu_backend
 autograd_training.dd	pending	autograd modules, parameters, callable modules, backward, and optimizers are not implemented

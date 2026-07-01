@@ -1,5 +1,9 @@
 from c import cblas.h as blas
 from c import math.h
+from cpp.path import dudu_tensor/opencl_native.hpp as opencl_native
+from dudu_tensor.backends import CpuDevice
+from dudu_tensor.backends import OpenBlasDevice
+from dudu_tensor.backends import OpenClDevice
 
 
 class IndexArray:
@@ -326,6 +330,31 @@ class TensorView[T]:
         return out
 
 
+class OpenClTensor:
+    handle: usize
+    rows: i32
+    cols: i32
+    shape: list[i32]
+
+    @operator("[]")
+    def row_view(self, row: i32, cols: slice) -> OpenClTensor:
+        handle: usize = cpp("reinterpret_cast<std::uintptr_t>(dd_opencl::row_slice(reinterpret_cast<dd_opencl::DeviceTensor*>(self.handle), row))")
+        return OpenClTensor(handle, 1, self.cols, index1(self.cols))
+
+    def matmul(self, right: OpenClTensor) -> OpenClTensor:
+        handle: usize = cpp("reinterpret_cast<std::uintptr_t>(dd_opencl::matmul(reinterpret_cast<dd_opencl::DeviceTensor*>(self.handle), reinterpret_cast<dd_opencl::DeviceTensor*>(right.handle)))")
+        return OpenClTensor(handle, self.rows, right.cols, shape2(self.rows, right.cols))
+
+    def cpu(self) -> Tensor[f32]:
+        out = empty_shape[f32](self.shape)
+        cpp("dd_opencl::download(reinterpret_cast<dd_opencl::DeviceTensor*>(self.handle), out.data);")
+        return out
+
+    def release(self):
+        cpp("dd_opencl::release(reinterpret_cast<dd_opencl::DeviceTensor*>(self.handle));")
+        self.handle = 0
+
+
 class Tensor[T]:
     offset: i32
     shape: list[i32]
@@ -570,8 +599,15 @@ class Tensor[T]:
     def assume_shape[Rows, Cols](self) -> Tensor[T][Rows, Cols]:
         return from_shape[T](self.shape, self.data)
 
-    def to[Device](self, device: Device) -> Tensor[T]:
+    def to(self, device: CpuDevice) -> Tensor[T]:
         return from_shape[T](self.shape, self.data)
+
+    def to(self, device: OpenBlasDevice) -> Tensor[T]:
+        return from_shape[T](self.shape, self.data)
+
+    def to(self, device: OpenClDevice) -> OpenClTensor:
+        handle: usize = cpp("reinterpret_cast<std::uintptr_t>(dd_opencl::upload(self.dim(0), self.dim(1), self.data.data()))")
+        return OpenClTensor(handle, self.dim(0), self.dim(1), copy_shape(self.shape))
 
     def cpu(self) -> Tensor[T]:
         return from_shape[T](self.shape, self.data)

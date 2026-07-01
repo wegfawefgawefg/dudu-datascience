@@ -33,6 +33,8 @@ The remaining target API still needs:
 - more complete rank 1, 2, 3, and 4 indexing/slicing coverage through the same
   implementation path
 - broader reductions and metrics needed by examples
+- cleaner extension-module boundaries so importing the CPU tensor surface does
+  not force every target to link the OpenCL helper
 
 Construction and testing helpers should prefer module-level functions such as
 `zeros[f32](...)`, `from_list[f32](...)`, and `assert_close(actual, expected)`.
@@ -146,16 +148,22 @@ RAII boundaries. CUDA/cuBLAS is not required on this AMD machine.
 
 The runnable slice now has backend marker singletons in `dudu_tensor.backends`
 and exercises `from dudu_tensor.backends import cpu`,
-`from dudu_tensor.backends import openblas`, `tensor.to(cpu.default())`,
-`tensor.to(openblas.default())`, and `tensor.cpu()`. Backend movement currently
-preserves CPU storage; real device ownership and dispatch are library work.
+`from dudu_tensor.backends import openblas`, `from dudu_tensor.backends import
+opencl`, `tensor.to(cpu.default())`, `tensor.to(openblas.default())`,
+`tensor.to(opencl.default())`, and `tensor.cpu()`. CPU/OpenBLAS movement
+preserves CPU storage. OpenCL movement creates device buffers, runs matmul and
+row-slice kernels, and requires explicit `.cpu()` download.
 
 `src/blas_backend_demo.dd` graduates the smallest BLAS/backend target surface
 into a runnable check: target-style backend imports, explicit
 `Tensor[f32][rows, cols]` shape assertion, overloaded `assert_close` for
 tensor/view/scalar values, and `cpu()`/`as_array_view()`/`to_array()`
-boundaries. It still uses the CPU-backed storage slice; true backend dispatch
-remains library work.
+boundaries.
+
+`src/target_gpu_backend.dd` graduates the smallest OpenCL target surface into a
+runnable check: explicit CPU-to-device transfer, device matmul, device row
+indexing without implicit CPU copies, explicit download, and comparison against
+the CPU tensor result.
 
 User code should move values with PyTorch-like device calls such as
 `tensor.to(opencl.default())` and `tensor.cpu()`. Backend selection is library

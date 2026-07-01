@@ -31,6 +31,11 @@ To verify the target API status:
 Graduated target API files have named `dudu` targets and must run. Pending
 files stay listed with an explicit missing implementation reason.
 
+The current reusable tensor module links both OpenBLAS and OpenCL because the
+GPU backend lives in the same `dudu_tensor` module as the CPU tensor surface.
+That keeps the dogfood API direct while Dudu grows cleaner extension-module
+boundaries.
+
 ## Demos
 
 `src/array_demos.dd` shows fixed-array indexing:
@@ -66,6 +71,13 @@ files stay listed with an explicit missing implementation reason.
 - `from c import cblas.h as blas`
 - pure Dudu row-major matmul compared against `blas.cblas_sgemm`
 - explicit CPU-contiguous storage boundary through `&tensor.data[0]`
+
+`src/target_gpu_backend.dd` graduates the OpenCL target API:
+
+- `host_tensor.to(opencl.default())` uploads CPU tensor storage
+- `gpu_tensor.matmul(other_gpu_tensor)` runs an OpenCL kernel
+- `gpu_tensor[0, :]` stays on device and preserves rank metadata
+- `gpu_tensor.cpu()` explicitly downloads back into a Dudu tensor
 
 `src/backend_surface_demo.dd` shows the target backend boundary shape:
 

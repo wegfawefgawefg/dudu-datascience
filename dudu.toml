@@ -7,8 +7,11 @@ standard = "c++20"
 [build]
 dir = "build"
 
+[include]
+paths = ["src"]
+
 [pkg]
-libs = ["openblas"]
+libs = ["openblas", "OpenCL"]
 
 [targets.target_tensor_surface]
 entry = "src/target_tensor_surface.dd"
@@ -18,3 +21,6 @@ entry = "src/target_advanced_indexing.dd"
 
 [targets.target_blas_backend]
 entry = "src/target_blas_backend.dd"
+
+[targets.target_gpu_backend]
+entry = "src/target_gpu_backend.dd"
