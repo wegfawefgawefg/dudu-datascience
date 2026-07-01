@@ -7,16 +7,17 @@ those files compile and run without compiler-owned tensor policy.
 
 The runnable demos use `src/dudu_tensor.dd` for early dogfood. The current
 module now stores `Tensor[T]` and `TensorView[T]` with rank-generic `shape`,
-`strides`, and `offset` metadata. `rows` and `cols` remain as rank-2
-conveniences for existing demos and BLAS interop, not the core indexing
-representation.
+`strides`, and `offset` metadata. Rank-2 helpers now read dimensions through
+`dim(axis)` instead of storing separate `rows` and `cols` fields; 2D
+constructors remain convenience APIs for existing demos and BLAS interop, not
+the core indexing representation.
 
 The current module provides:
 
 - `Tensor[T]` owning CPU storage with runtime `shape`, `strides`, `offset`,
-  and rank-2 `rows`/`cols` convenience fields
+  and rank-independent `dim(axis)` / `count()` helpers
 - `TensorView[T]` borrowing CPU storage with runtime `shape`, `strides`, and
-  `offset`
+  `offset`, plus the same dimension/count helpers
 - `zeros`, `ones`, `full`, `arange`, `randn`
 - `from_list`, `from_nested`
 - `assert_close`, `print_tensor`
@@ -72,12 +73,13 @@ Target code assumes these are usable and visible in hover/inlay:
 The runnable `src/dudu_tensor.dd` slice now provides method-form
 `tensor.assume_shape[Rows, Cols]()` for explicit API-boundary assertions. This
 currently carries compile-time metadata while preserving normal runtime
-`rows`/`cols`; broader shape propagation and diagnostics remain compiler and
-library work.
+`shape`/`strides` metadata; broader shape propagation and diagnostics remain
+compiler and library work.
 
 Shape metadata now matches runtime storage metadata for the runnable CPU tensor
-slice. Remaining work is to remove rank-2 assumptions from more convenience
-helpers and make richer shape diagnostics visible in compiler/LSP output.
+slice. Remaining work is to generalize more convenience constructors and
+printing/reduction helpers beyond 2D and make richer shape diagnostics visible
+in compiler/LSP output.
 
 The compiler should provide general shape metadata and diagnostics. Tensor
 layout, allocation, and backend behavior stay in library code.
