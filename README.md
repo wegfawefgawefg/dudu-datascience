@@ -81,6 +81,14 @@ slice into reusable `dudu_tensor` code:
 - column-slice scalar update: `selected[:, 0] = selected[:, 0] + 10.0`
 - chained window tiles: `logits.window[2, 2][1, 2]`
 
+`src/activation_metrics_demo.dd` graduates the first activation/loss target
+slice:
+
+- deterministic initializer: `randn[f32](rows, cols, scale)`
+- elementwise helpers: `relu(tensor)`, `sigmoid(tensor)`
+- scalar loss tensor: `mse_loss(predicted, expected)`
+- metric method: `predicted.binary_accuracy(expected)`
+
 The BLAS demo needs `openblas` discoverable through `pkg-config`.
 
 Each section prints the intended result and the actual computed result. The
@@ -90,6 +98,7 @@ program exits nonzero if the final summary score drifts.
 
 ```text
 src/main.dd          entry point
+src/activation_metrics_demo.dd activation, loss, metric helpers
 src/array_demos.dd   fixed arrays and slices
 src/advanced_indexing_demo.dd target-style index arrays, masks, vindex/oindex
 src/backend_surface_demo.dd backend marker and materialization boundaries

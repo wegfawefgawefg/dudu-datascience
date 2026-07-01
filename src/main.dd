@@ -1,4 +1,5 @@
 from advanced_indexing_demo import run_advanced_indexing_demo
+from activation_metrics_demo import run_activation_metrics_demo
 from array_demos import run_array_demos
 from blas_backend_demo import run_blas_backend_demo
 from backend_surface_demo import run_backend_surface_demo
@@ -20,6 +21,7 @@ def main() -> i32:
     backend_surface_score = run_backend_surface_demo()
     blas_backend_score = run_blas_backend_demo()
     advanced_indexing_score = run_advanced_indexing_demo()
+    activation_metrics_score = run_activation_metrics_demo()
     total = (
         array_score
         + hook_score
@@ -29,6 +31,7 @@ def main() -> i32:
         + backend_surface_score
         + blas_backend_score
         + advanced_indexing_score
+        + activation_metrics_score
     )
 
     section("summary")
@@ -40,7 +43,8 @@ def main() -> i32:
     show_i32("backend surface score", 42, backend_surface_score)
     show_i32("blas backend target score", 42, blas_backend_score)
     show_i32("advanced indexing target score", 42, advanced_indexing_score)
-    show_i32("total score", 4967, total)
-    if total != 4967:
+    show_i32("activation metrics score", 42, activation_metrics_score)
+    show_i32("total score", 5009, total)
+    if total != 5009:
         return 1
     return 0

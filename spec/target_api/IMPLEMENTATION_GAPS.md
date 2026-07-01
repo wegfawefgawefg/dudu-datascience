@@ -10,18 +10,18 @@ slice of the target API. It currently provides:
 
 - `Tensor[T]` owning CPU storage with runtime `rows`/`cols`
 - `TensorView[T]` borrowing CPU storage for normal row/column/patch slices
-- `zeros`, `ones`, `full`, `arange`
+- `zeros`, `ones`, `full`, `arange`, `randn`
 - `from_list`, `from_nested`
 - `assert_close`, `print_tensor`
 - `index_array`, `bool_mask`
 - `vindex`, `oindex`, and `window` library indexer fields
+- `relu`, `sigmoid`, `mse_loss`, `binary_accuracy`
 
 The remaining target API still needs:
 
 - `Tensor[T][shape]` owning CPU storage
 - `TensorView[T][shape]` borrowing storage
-- `randn`
-- reductions and metrics needed by examples
+- broader reductions and metrics needed by examples
 
 Construction and testing helpers should prefer module-level functions such as
 `zeros[f32](...)`, `from_list[f32](...)`, and `assert_close(actual, expected)`.
@@ -108,7 +108,8 @@ compiler tensor rules.
 Runnable status: `Tensor + Tensor` supports a small row/column broadcasting
 slice. `TensorView + scalar` and column-slice scatter are now covered by the
 target-style `selected[:, 0] = selected[:, 0] + 10.0` expression in
-`src/advanced_indexing_demo.dd`. Lazy expressions, activation helpers, and
+`src/advanced_indexing_demo.dd`. `src/activation_metrics_demo.dd` covers
+`relu`, `sigmoid`, `mse_loss`, and `binary_accuracy`. Lazy expressions and
 broader elementwise composition remain target work.
 
 ## 6. Native Backend Modules
@@ -151,12 +152,17 @@ policy; the compiler should only preserve enough type facts for diagnostics.
 - internally tracked tensor operations
 - `loss.backward()`
 - SGD optimizer
-- simple loss/activation helpers
+- autograd-aware loss/activation helpers
 
 This should feel PyTorch-like at the user level. Tape/graph bookkeeping may
 exist inside the library, but target user code should not instantiate a public
 `Tape` just to train a model. The compiler should only need normal classes,
 enums, references, generics, operator overloads, and diagnostics.
+
+The runnable library now provides non-autograd `randn`, `relu`, `sigmoid`,
+`mse_loss`, and `Tensor.binary_accuracy` in `src/activation_metrics_demo.dd`.
+Those helpers are reusable for forward-only demos; training still needs the
+parameter and graph pieces above.
 
 ## 8. Editor And Diagnostics
 

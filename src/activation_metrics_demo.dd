@@ -1,0 +1,68 @@
+from dudu_tensor import Tensor
+from dudu_tensor import assert_close
+from dudu_tensor import from_nested
+from dudu_tensor import mse_loss
+from dudu_tensor import randn
+from dudu_tensor import relu
+from dudu_tensor import sigmoid
+from dudu_tensor import print_tensor
+from print_utils import section
+from print_utils import show_f32
+from print_utils import show_i32
+
+
+def run_activation_metrics_demo() -> i32:
+    section("activation, loss, and metric helpers")
+
+    raw: Tensor[f32][2, 3] = from_nested[f32]([
+        [-1.0, 0.0, 2.0],
+        [3.0, -4.0, 0.5],
+    ])
+    activated = relu(raw)
+    expected_relu: Tensor[f32][2, 3] = from_nested[f32]([
+        [0.0, 0.0, 2.0],
+        [3.0, 0.0, 0.5],
+    ])
+    assert_close(activated, expected_relu)
+    print_tensor("relu(raw)", activated)
+
+    probabilities = sigmoid(from_nested[f32]([
+        [0.0, 2.0],
+        [-2.0, 4.0],
+    ]))
+    assert_close(probabilities[0, 0], 0.5)
+    assert_close(probabilities[0, 1], 0.880797)
+    assert_close(probabilities[1, 0], 0.119203)
+    assert_close(probabilities[1, 1], 0.982014)
+    print_tensor("sigmoid(scores)", probabilities)
+
+    predicted = from_nested[f32]([
+        [0.1],
+        [0.9],
+        [0.8],
+        [0.2],
+    ])
+    expected = from_nested[f32]([
+        [0.0],
+        [1.0],
+        [1.0],
+        [0.0],
+    ])
+    loss = mse_loss(predicted, expected)
+    accuracy = predicted.binary_accuracy(expected)
+    assert_close(loss[0, 0], 0.025)
+    assert_close(accuracy, 1.0)
+    show_f32("mse_loss(predicted, expected)", 0.025, loss[0, 0])
+    show_f32("predicted.binary_accuracy(expected)", 1.0, accuracy)
+
+    init = randn[f32](2, 3, 0.1)
+    expected_init: Tensor[f32][2, 3] = from_nested[f32]([
+        [0.6, -0.3, 1.1],
+        [0.2, -0.7, 0.7],
+    ])
+    assert_close(init, expected_init)
+    print_tensor("randn[f32](2, 3, 0.1)", init)
+
+    score = i32(accuracy * 40.0 + loss[0, 0] * 80.0)
+    show_i32("activation metrics score", 42, score)
+    return score

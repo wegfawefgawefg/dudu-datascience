@@ -1,4 +1,5 @@
 from c import cblas.h as blas
+from c import math.h
 
 
 class IndexArray:
@@ -352,6 +353,23 @@ class Tensor[T]:
             row += 1
         return out
 
+    def binary_accuracy(self, expected: Tensor[T]) -> f32:
+        matches = 0
+        total = self.rows * self.cols
+        row = 0
+        while row < self.rows:
+            col = 0
+            while col < self.cols:
+                predicted_positive = self[row, col] >= T(0.5)
+                expected_positive = expected[row, col] >= T(0.5)
+                if predicted_positive == expected_positive:
+                    matches += 1
+                col += 1
+            row += 1
+        if total == 0:
+            return 0.0
+        return f32(matches) / f32(total)
+
 def slice_start(value: slice) -> i32:
     if value.has_start:
         return i32(value.start)
@@ -498,6 +516,59 @@ def scale(input: Tensor[f32], factor: f32) -> Tensor[f32]:
             col += 1
         row += 1
     return out
+
+
+def randn[T](rows: i32, cols: i32, scale_value: T) -> Tensor[T]:
+    out = empty_like[T](rows, cols)
+    i = 0
+    while i < rows * cols:
+        bucket = ((i * 37 + 17) % 23) - 11
+        out.data[i] = T(bucket) * scale_value
+        i += 1
+    return out
+
+
+def relu(input: Tensor[f32]) -> Tensor[f32]:
+    out = zeros[f32](input.rows, input.cols)
+    row = 0
+    while row < input.rows:
+        col = 0
+        while col < input.cols:
+            value = input[row, col]
+            if value < 0.0:
+                value = 0.0
+            out[row, col] = value
+            col += 1
+        row += 1
+    return out
+
+
+def sigmoid(input: Tensor[f32]) -> Tensor[f32]:
+    out = zeros[f32](input.rows, input.cols)
+    row = 0
+    while row < input.rows:
+        col = 0
+        while col < input.cols:
+            out[row, col] = f32(1.0 / (1.0 + exp(0.0 - input[row, col])))
+            col += 1
+        row += 1
+    return out
+
+
+def mse_loss(predicted: Tensor[f32], expected: Tensor[f32]) -> Tensor[f32]:
+    total: f32 = 0.0
+    count = predicted.rows * predicted.cols
+    row = 0
+    while row < predicted.rows:
+        col = 0
+        while col < predicted.cols:
+            diff = predicted[row, col] - expected[row, col]
+            total += diff * diff
+            col += 1
+        row += 1
+    if count == 0:
+        return from_list[f32]([0.0])
+    return from_list[f32]([total / f32(count)])
 
 
 def matmul(left: Tensor[f32], right: Tensor[f32]) -> Tensor[f32]:
