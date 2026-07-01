@@ -107,6 +107,13 @@ and exercises `from dudu_tensor.backends import cpu`,
 `tensor.to(openblas.default())`, and `tensor.cpu()`. Backend movement currently
 preserves CPU storage; real device ownership and dispatch are library work.
 
+`src/blas_backend_demo.dd` graduates the smallest BLAS/backend target surface
+into a runnable check: target-style backend imports, explicit
+`Tensor[f32][rows, cols]` shape assertion, overloaded `assert_close` for
+tensor/view/scalar values, and `cpu()`/`as_array_view()`/`to_array()`
+boundaries. It still uses the CPU-backed storage slice; true backend dispatch
+remains library work.
+
 User code should move values with PyTorch-like device calls such as
 `tensor.to(opencl.default())` and `tensor.cpu()`. Backend selection is library
 policy; the compiler should only preserve enough type facts for diagnostics.

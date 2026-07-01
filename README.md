@@ -62,6 +62,13 @@ dudu run --timings
 - `tensor.to(cpu.default())`, `tensor.to(openblas.default())`, and `tensor.cpu()`
 - explicit `as_array_view()` and `to_array()` materialization boundaries
 
+`src/blas_backend_demo.dd` graduates the smaller BLAS target contract into a
+runnable check:
+
+- target-style `Tensor[f32][rows, cols]` shape assertion
+- overloaded `assert_close` for tensors, views, and scalars
+- `logits.cpu()`, `as_array_view()`, and `to_array()` boundary checks
+
 The BLAS demo needs `openblas` discoverable through `pkg-config`.
 
 Each section prints the intended result and the actual computed result. The
@@ -73,6 +80,7 @@ program exits nonzero if the final summary score drifts.
 src/main.dd          entry point
 src/array_demos.dd   fixed arrays and slices
 src/backend_surface_demo.dd backend marker and materialization boundaries
+src/blas_backend_demo.dd target-style BLAS backend boundary
 src/blas_demos.dd    OpenBLAS-backed matrix multiply
 src/hook_demos.dd    user-defined indexing operators
 src/tensor_demos.dd  small tensor-style mask demo

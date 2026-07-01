@@ -1,0 +1,29 @@
+from dudu_tensor import Tensor
+from dudu_tensor import arange
+from dudu_tensor import assert_close
+from dudu_tensor import ones
+from dudu_tensor.backends import cpu
+from dudu_tensor.backends import openblas
+from print_utils import section
+from print_utils import show_f32
+
+
+def run_blas_backend_demo() -> i32:
+    section("target-style BLAS backend boundary")
+    x = arange[f32](4, 6).to(cpu.default())
+    w = ones[f32](6, 3).to(openblas.default())
+
+    logits = x.matmul(w)
+    expected: Tensor[f32][4, 3] = x.to(cpu.default()).matmul(w.to(cpu.default()))
+    assert_close(logits.cpu(), expected)
+
+    cpu_logits = logits.cpu()
+    view = cpu_logits.as_array_view()
+    assert_close(view[0, 0], cpu_logits[0, 0])
+
+    copied = logits.to_array()
+    assert_close(copied[3, 2], cpu_logits[3, 2])
+
+    show_f32("target backend logits[0, 0]", 15.0, logits[0, 0])
+    show_f32("target backend logits[3, 2]", 123.0, logits[3, 2])
+    return i32(logits[0, 0] + logits[3, 2]) - 96

@@ -24,9 +24,9 @@ def run_backend_surface_demo() -> i32:
     show_f32("backend shaped[1, 1]", 12.0, shaped[1, 1])
 
     view = shaped.as_array_view()
-    assert_close(f32(view[0]), shaped[0, 0])
+    assert_close(view[0, 0], shaped[0, 0])
 
     copied = shaped.to_array()
-    assert_close(f32(copied[3]), shaped[1, 1])
+    assert_close(copied[1, 1], shaped[1, 1])
 
     return i32(shaped[0, 0] + shaped[1, 1]) + 27

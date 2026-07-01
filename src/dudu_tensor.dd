@@ -119,16 +119,18 @@ class Tensor[T]:
             row += 1
         return out
 
-    def as_array_view(self) -> &list[T]:
-        return self.data
+    def as_array_view(self) -> TensorView[T]:
+        return TensorView[T](self.data, 0, self.rows, self.cols, self.cols, 1)
 
-    def to_array(self) -> list[T]:
-        out: list[T] = []
-        index = 0
-        total = i32(len(self.data))
-        while index < total:
-            out.append(self.data[index])
-            index += 1
+    def to_array(self) -> Tensor[T]:
+        out = empty_like[T](self.rows, self.cols)
+        row = 0
+        while row < self.rows:
+            col = 0
+            while col < self.cols:
+                out[row, col] = self[row, col]
+                col += 1
+            row += 1
         return out
 
     def assume_shape[Rows, Cols](self) -> Tensor[T][Rows, Cols]:
@@ -244,7 +246,7 @@ def from_nested[T](values: list[list[T]]) -> Tensor[T]:
     return out
 
 
-def clone[T](input: Tensor[T]) -> Tensor[T]:
+def clone[T](input: &Tensor[T]) -> Tensor[T]:
     out = empty_like[T](input.rows, input.cols)
     row = 0
     while row < input.rows:
@@ -351,6 +353,14 @@ def assert_close(actual: f32, expected: f32):
     if diff < 0.0:
         diff = 0.0 - diff
     assert diff <= 0.001, "tensor scalar mismatch"
+
+
+def assert_close(actual: Tensor[f32], expected: Tensor[f32]):
+    assert_tensor_close(actual, expected)
+
+
+def assert_close(actual: TensorView[f32], expected: Tensor[f32]):
+    assert_view_close(actual, expected)
 
 
 def assert_tensor_close(actual: Tensor[f32], expected: Tensor[f32]):
