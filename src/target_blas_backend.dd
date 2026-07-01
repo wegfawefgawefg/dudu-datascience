@@ -1,0 +1,8 @@
+from blas_backend_demo import run_blas_backend_demo
+
+
+def main() -> i32:
+    score = run_blas_backend_demo()
+    if score != 42:
+        return score
+    return 0

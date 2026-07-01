@@ -9,3 +9,12 @@ dir = "build"
 
 [pkg]
 libs = ["openblas"]
+
+[targets.target_tensor_surface]
+entry = "src/target_tensor_surface.dd"
+
+[targets.target_advanced_indexing]
+entry = "src/target_advanced_indexing.dd"
+
+[targets.target_blas_backend]
+entry = "src/target_blas_backend.dd"

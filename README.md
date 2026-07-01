@@ -6,9 +6,9 @@ This is not a production numeric library yet. It is a dogfood repo for the
 indexing forms and reusable tensor surface that are useful for data science and
 ML-shaped code.
 
-The `spec/target_api` directory contains aspirational Dudu code for the real
-tensor library we want. Those files are not part of the build yet; they are the
-API target that compiler and library work should make real.
+The `spec/target_api` directory contains target Dudu code for the real tensor
+library we want. `spec/target_api/manifest.tsv` records which targets have
+graduated into runnable `dudu` targets and which are still pending.
 
 ## Run
 
@@ -21,6 +21,15 @@ For compiler stage timings:
 ```bash
 dudu run --timings
 ```
+
+To verify the target API status:
+
+```bash
+./scripts/check_target_api.sh
+```
+
+Graduated target API files have named `dudu` targets and must run. Pending
+files stay listed with an explicit missing implementation reason.
 
 ## Demos
 
@@ -118,5 +127,5 @@ src/shape_stride_demo.dd rank-3/rank-4 shape-stride view checks
 src/tensor_demos.dd  small tensor-style mask demo
 src/dudu_tensor.dd   reusable Tensor/TensorView/indexer slice
 src/print_utils.dd   tiny print helpers
-spec/target_api/     desired tensor API examples, not built yet
+spec/target_api/     target API examples plus graduated/pending manifest
 ```

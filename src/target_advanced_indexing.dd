@@ -1,0 +1,8 @@
+from advanced_indexing_demo import run_advanced_indexing_demo
+
+
+def main() -> i32:
+    score = run_advanced_indexing_demo()
+    if score != 42:
+        return score
+    return 0
