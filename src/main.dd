@@ -1,4 +1,5 @@
 from array_demos import run_array_demos
+from blas_demos import run_blas_demos
 from hook_demos import run_hook_demos
 from print_utils import section
 from print_utils import show_i32
@@ -10,13 +11,15 @@ def main() -> i32:
     array_score = run_array_demos()
     hook_score = run_hook_demos()
     tensor_score = run_tensor_demos()
-    total = array_score + hook_score + tensor_score
+    blas_score = run_blas_demos()
+    total = array_score + hook_score + tensor_score + blas_score
 
     section("summary")
     show_i32("array demo score", 4627, array_score)
     show_i32("hook demo score", 89, hook_score)
     show_i32("tensor demo score", 42, tensor_score)
-    show_i32("total score", 4758, total)
-    if total != 4758:
+    show_i32("blas demo score", 42, blas_score)
+    show_i32("total score", 4800, total)
+    if total != 4800:
         return 1
     return 0

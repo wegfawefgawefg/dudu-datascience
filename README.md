@@ -45,6 +45,14 @@ dudu run --timings
 - row-mask selection: `tensor[mask, :]`
 - row-mask scatter assignment: `tensor[mask, :] = value`
 
+`src/blas_demos.dd` shows native backend interop:
+
+- `from c import cblas.h as blas`
+- pure Dudu row-major matmul compared against `blas.cblas_sgemm`
+- explicit CPU-contiguous storage boundary through `&tensor.data[0]`
+
+The BLAS demo needs `openblas` discoverable through `pkg-config`.
+
 Each section prints the intended result and the actual computed result. The
 program exits nonzero if the final summary score drifts.
 
@@ -53,6 +61,7 @@ program exits nonzero if the final summary score drifts.
 ```text
 src/main.dd          entry point
 src/array_demos.dd   fixed arrays and slices
+src/blas_demos.dd    OpenBLAS-backed matrix multiply
 src/hook_demos.dd    user-defined indexing operators
 src/tensor_demos.dd  small tensor-style mask demo
 src/print_utils.dd   tiny print helpers
