@@ -34,6 +34,58 @@ def conv2d_valid[H, W, K](
     return assume_shape[Tensor[f32][H - K + 1, W - K + 1]](out)
 
 
+def apply_conv2d[H, W, K](
+    image: &array[f32][H, W],
+    kernel: &array[f32][K, K],
+) -> array[f32][H - K + 1, W - K + 1]:
+    out: array[f32][H - K + 1, W - K + 1]
+    out_h = H - K + 1
+    out_w = W - K + 1
+
+    y = 0
+    while y < out_h:
+        x = 0
+        while x < out_w:
+            acc: f32 = 0.0
+            ky = 0
+            while ky < K:
+                kx = 0
+                while kx < K:
+                    acc += image[y + ky, x + kx] * kernel[ky, kx]
+                    kx += 1
+                ky += 1
+            out[y, x] = acc
+            x += 1
+        y += 1
+
+    return out
+
+
+def array_conv2d_demo() -> i32:
+    section("array shape generic convolution: array[4, 4] * kernel[3, 3] -> array[2, 2]")
+
+    image: array[f32][4, 4] = [
+        [1.0, 2.0, 3.0, 4.0],
+        [5.0, 6.0, 7.0, 8.0],
+        [9.0, 10.0, 11.0, 12.0],
+        [13.0, 14.0, 15.0, 16.0],
+    ]
+    kernel: array[f32][3, 3] = [
+        [1.0, 0.0, -1.0],
+        [1.0, 0.0, -1.0],
+        [1.0, 0.0, -1.0],
+    ]
+
+    out = apply_conv2d[4, 4, 3](image, kernel)
+
+    show_f32("array conv[0, 0]", -6.0, out[0, 0])
+    show_f32("array conv[0, 1]", -6.0, out[0, 1])
+    show_f32("array conv[1, 0]", -6.0, out[1, 0])
+    show_f32("array conv[1, 1]", -6.0, out[1, 1])
+
+    return i32(out[0, 0] + out[0, 1] + out[1, 0] + out[1, 1]) + 66
+
+
 def run_convolution_shape_demo() -> i32:
     section("shape generic convolution: Tensor[4, 4] * Kernel[3, 3] -> Tensor[2, 2]")
 
@@ -57,4 +109,4 @@ def run_convolution_shape_demo() -> i32:
     show_f32("conv2d[0, 0]", -6.0, out[0, 0])
     show_f32("conv2d[1, 1]", -6.0, out[1, 1])
 
-    return out.dim(0) * 10 + out.dim(1)
+    return (out.dim(0) * 10 + out.dim(1)) + array_conv2d_demo()
