@@ -43,7 +43,7 @@ losses, backward plumbing, and SGD kept outside the tensor storage package.
 
 - scalar comma indexing: `matrix[1, 2]`
 - indexed assignment: `matrix[2, 3] = ...`
-- generic shape/stride views through `array_view[T]`
+- generic shape/stride views through inferred `array_view[T][shape]`
 - row views: `matrix[1, :]`
 - column views: `matrix[:, 1]`
 - full matrix views: `matrix[:, :]`
@@ -52,6 +52,10 @@ losses, backward plumbing, and SGD kept outside the tensor storage package.
 - open ranges: `matrix[1:, 1:]`
 - rank-3 image/channel indexing: `pixels[y, x, channel]`
 - channel/range views: `pixels[0, 0, 0:3]`, `pixels[:, :, 1]`, `pixels[:, :, :]`
+
+The editor should show shaped inlay hints for inferred views, for example
+`row: array_view[i32][4]`, `col: array_view[i32][3]`, and
+`patch: array_view[i32][2, 2]`.
 
 `src/hook_demos.dd` shows library-defined indexing:
 

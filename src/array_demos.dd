@@ -33,7 +33,7 @@ def row_slice_demo() -> i32:
         [100, 200, 300, 400],
     ]
 
-    row: array_view[i32] = matrix[1, :]
+    row = matrix[1, :]
     total = sum_view(row)
     show_i32("sum of row 1", 100, total)
     show_i32("row[2]", 30, row[2])
@@ -48,7 +48,7 @@ def column_slice_demo() -> i32:
         [100, 200, 300, 400],
     ]
 
-    col: array_view[i32] = matrix[:, 1]
+    col = matrix[:, 1]
     total = sum_view(col)
     show_i32("sum of column 1", 222, total)
     show_i32("col[2]", 200, col[2])
@@ -63,7 +63,7 @@ def full_matrix_slice_demo() -> i32:
         [3, 6],
     ]
 
-    all_values: array_view[i32] = matrix[:, :]
+    all_values = matrix[:, :]
     total = sum_view(all_values)
     show_i32("sum of every matrix value", 42, total)
     return total
@@ -77,7 +77,7 @@ def patch_slice_demo() -> i32:
         [100, 200, 300, 400],
     ]
 
-    patch: array_view[i32] = matrix[1:3, 2:4]
+    patch = matrix[1:3, 2:4]
     total = sum_view(patch)
     show_i32("sum of patch [[30, 40], [300, 400]]", 770, total)
     show_i32("patch[1, 0]", 300, patch[1, 0])
@@ -88,9 +88,9 @@ def stepped_slice_demo() -> i32:
     section("1d stepped slices: values[0:6:2], values[1::2], values[::3]")
     values: array[i32] = [3, 10, 5, 20, 7, 30, 11]
 
-    evens: array_view[i32] = values[0:6:2]
-    odds: array_view[i32] = values[1::2]
-    thirds: array_view[i32] = values[::3]
+    evens = values[0:6:2]
+    odds = values[1::2]
+    thirds = values[::3]
     even_sum = sum_view(evens)
     odd_sum = sum_view(odds)
     third_sum = sum_view(thirds)
@@ -109,7 +109,7 @@ def open_range_demo() -> i32:
         [100, 200, 300, 400],
     ]
 
-    patch: array_view[i32] = matrix[1:, 1:]
+    patch = matrix[1:, 1:]
     total = sum_view(patch)
     show_i32("sum of lower-right 2x3 patch", 990, total)
     show_i32("patch[0, 0]", 20, patch[0, 0])
@@ -124,9 +124,9 @@ def rank3_channel_demo() -> i32:
     ]
 
     green = pixels[1, 1, 1]
-    first_rgb: array_view[i32] = pixels[0, 0, 0:3]
-    all_green: array_view[i32] = pixels[:, :, 1]
-    all_values: array_view[i32] = pixels[:, :, :]
+    first_rgb = pixels[0, 0, 0:3]
+    all_green = pixels[:, :, 1]
+    all_values = pixels[:, :, :]
 
     show_i32("pixels[1, 1, 1]", 50, green)
     show_i32("sum pixels[0, 0, 0:3]", 6, sum_view(first_rgb))
