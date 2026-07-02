@@ -11,7 +11,7 @@ dir = "build"
 paths = ["src"]
 
 [pkg]
-libs = ["openblas", "OpenCL"]
+libs = ["openblas"]
 
 [targets.target_tensor_surface]
 entry = "src/target_tensor_surface.dd"
@@ -24,3 +24,6 @@ entry = "src/target_blas_backend.dd"
 
 [targets.target_gpu_backend]
 entry = "src/target_gpu_backend.dd"
+
+[targets.target_gpu_backend.pkg]
+libs = ["OpenCL"]

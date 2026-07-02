@@ -1,9 +1,9 @@
-from dudu_tensor import Tensor
-from dudu_tensor import arange
-from dudu_tensor import assert_close
-from dudu_tensor import ones
-from dudu_tensor.backends import cpu
-from dudu_tensor.backends import openblas
+from ndad import Tensor
+from ndad import arange
+from ndad import assert_close
+from ndad import ones
+from ndad.backends import cpu
+from ndad.backends import openblas
 from print_utils import section
 from print_utils import show_f32
 

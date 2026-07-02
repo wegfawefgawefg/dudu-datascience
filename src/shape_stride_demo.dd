@@ -1,8 +1,8 @@
-from dudu_tensor import arange_shape
-from dudu_tensor import assert_close
-from dudu_tensor import shape3
-from dudu_tensor import shape4
-from dudu_tensor import sum_view
+from ndad import arange_shape
+from ndad import assert_close
+from ndad import shape3
+from ndad import shape4
+from ndad import sum_view
 from print_utils import section
 from print_utils import show_f32
 

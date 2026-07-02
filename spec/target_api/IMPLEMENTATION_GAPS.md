@@ -5,7 +5,7 @@ those files compile and run without compiler-owned tensor policy.
 
 ## 1. Reusable Tensor Library
 
-The runnable demos use `src/dudu_tensor.dd` for early dogfood. The current
+The runnable demos use `src/ndad.dd` for early dogfood. The current
 module now stores `Tensor[T]` and `TensorView[T]` with rank-generic `shape`,
 `strides`, and `offset` metadata. Rank-2 helpers now read dimensions through
 `dim(axis)` instead of storing separate `rows` and `cols` fields; 2D
@@ -79,7 +79,7 @@ Target code assumes these are usable and visible in hover/inlay:
 - mask selection producing `dyn`
 - `assume_shape[...]` or equivalent explicit shape assertion
 
-The runnable `src/dudu_tensor.dd` slice now provides method-form
+The runnable `src/ndad.dd` slice now provides method-form
 `tensor.assume_shape[Rows, Cols]()` for explicit API-boundary assertions. This
 currently carries compile-time metadata while preserving normal runtime
 `shape`/`strides` metadata; broader shape propagation and diagnostics remain
@@ -144,21 +144,19 @@ broader elementwise composition remain target work.
 
 The target API needs backend modules:
 
-- `dudu_tensor.backends.cpu`
-- `dudu_tensor.backends.openblas`
-- `dudu_tensor.backends.opencl`
+- `ndad.backends.cpu`
+- `ndad.backends.openblas`
+- `ndad.backends.opencl`
 
 OpenBLAS should call CBLAS through normal native imports. OpenCL should own
 device buffers, kernels, upload/download, and cleanup through normal Dudu/C++
 RAII boundaries. CUDA/cuBLAS is not required on this AMD machine.
 
-The runnable slice now has backend marker singletons in `dudu_tensor.backends`
-and exercises `from dudu_tensor.backends import cpu`,
-`from dudu_tensor.backends import openblas`, `from dudu_tensor.backends import
-opencl`, `tensor.to(cpu.default())`, `tensor.to(openblas.default())`,
-`tensor.to(opencl.default())`, and `tensor.cpu()`. CPU/OpenBLAS movement
-preserves CPU storage. OpenCL movement creates device buffers, runs matmul and
-plan-based gathered view kernels, and requires explicit `.cpu()` download.
+The runnable CPU/OpenBLAS slice now has backend marker singletons in
+`ndad.backends` and exercises `from ndad.backends import cpu`,
+`from ndad.backends import openblas`, `tensor.to(cpu.default())`,
+`tensor.to(openblas.default())`, and `tensor.cpu()`. CPU/OpenBLAS movement
+preserves CPU storage.
 
 `src/blas_backend_demo.dd` graduates the smallest BLAS/backend target surface
 into a runnable check: target-style backend imports, explicit
@@ -166,12 +164,14 @@ into a runnable check: target-style backend imports, explicit
 tensor/view/scalar values, and `cpu()`/`as_array_view()`/`to_array()`
 boundaries.
 
-`src/target_gpu_backend.dd` graduates the smallest OpenCL target surface into a
-runnable check: explicit CPU-to-device transfer, device matmul, device indexing
-through the shared index planner without implicit CPU copies, explicit download,
-and comparison against the CPU tensor result. The current OpenCL dogfood backend
-materializes rank-1/rank-2 gathered views into new contiguous device buffers;
-that is a backend limitation, not a compiler tensor rule.
+`src/target_gpu_backend.dd` keeps the smallest OpenCL target surface as a
+runnable optional check on the older `dudu_tensor` prototype: explicit
+CPU-to-device transfer, device matmul, device indexing through the shared index
+planner without implicit CPU copies, explicit download, and comparison against
+the CPU tensor result. The current OpenCL dogfood backend materializes
+rank-1/rank-2 gathered views into new contiguous device buffers; that is a
+backend limitation, not a compiler tensor rule. Moving OpenCL under
+`ndad.backends.opencl` is still extension-module work.
 
 User code should move values with PyTorch-like device calls such as
 `tensor.to(opencl.default())` and `tensor.cpu()`. Backend selection is library
@@ -179,7 +179,8 @@ policy; the compiler should only preserve enough type facts for diagnostics.
 
 ## 7. Autograd Prototype
 
-`autograd_training.dd` requires:
+`autograd_training.dd` sketches `mald`, the intended ML/autograd layer on top
+of `ndad`. It requires:
 
 - `Parameter[T][shape]`
 - `Module` or equivalent parameter-owning base/trait

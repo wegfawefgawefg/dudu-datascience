@@ -1,0 +1,20 @@
+class CpuDevice:
+    id: i32
+
+
+class OpenBlasDevice:
+    id: i32
+
+
+class CpuBackend:
+    def default() -> CpuDevice:
+        return CpuDevice(0)
+
+
+class OpenBlasBackend:
+    def default() -> OpenBlasDevice:
+        return OpenBlasDevice(1)
+
+
+cpu: CpuBackend = CpuBackend()
+openblas: OpenBlasBackend = OpenBlasBackend()

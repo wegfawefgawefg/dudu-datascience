@@ -1,0 +1,777 @@
+from c import cblas.h as blas
+from c import math.h
+from cpp.path import ndad/index_native.hpp as index_native
+from ndad.backends import CpuDevice
+from ndad.backends import OpenBlasDevice
+
+
+class IndexArray:
+    data: list[i32]
+
+    @operator("[]")
+    def at(self, index: i32) -> i32:
+        return self.data[index]
+
+    def count(self) -> i32:
+        return i32(len(self.data))
+
+
+class Mask:
+    data: list[bool]
+
+    @operator("[]")
+    def at(self, index: i32) -> bool:
+        return self.data[index]
+
+    def count(self) -> i32:
+        return i32(len(self.data))
+
+    def count_true(self) -> i32:
+        total = 0
+        i = 0
+        while i < self.count():
+            if self[i]:
+                total += 1
+            i += 1
+        return total
+
+
+def shape2(rows: i32, cols: i32) -> list[i32]:
+    shape: list[i32] = []
+    shape.append(rows)
+    shape.append(cols)
+    return shape
+
+
+def shape3(a: i32, b: i32, c: i32) -> list[i32]:
+    shape = shape2(a, b)
+    shape.append(c)
+    return shape
+
+
+def shape4(a: i32, b: i32, c: i32, d: i32) -> list[i32]:
+    shape = shape3(a, b, c)
+    shape.append(d)
+    return shape
+
+
+def copy_shape(input: list[i32]) -> list[i32]:
+    out: list[i32] = []
+    i = 0
+    while i < i32(len(input)):
+        out.append(input[i])
+        i += 1
+    return out
+
+
+def shape_dim(shape: list[i32], axis: i32) -> i32:
+    if axis < i32(len(shape)):
+        return shape[axis]
+    return 1
+
+
+def shape_total(shape: list[i32]) -> i32:
+    total = 1
+    i = 0
+    while i < i32(len(shape)):
+        total *= shape[i]
+        i += 1
+    return total
+
+
+def index1(a: i32) -> list[i32]:
+    values: list[i32] = []
+    values.append(a)
+    return values
+
+
+def index2(a: i32, b: i32) -> list[i32]:
+    values = index1(a)
+    values.append(b)
+    return values
+
+
+def index3(a: i32, b: i32, c: i32) -> list[i32]:
+    values = index2(a, b)
+    values.append(c)
+    return values
+
+
+def index4(a: i32, b: i32, c: i32, d: i32) -> list[i32]:
+    values = index3(a, b, c)
+    values.append(d)
+    return values
+
+
+def contiguous_strides(shape: list[i32]) -> list[i32]:
+    strides: list[i32] = []
+    i = 0
+    while i < i32(len(shape)):
+        strides.append(1)
+        i += 1
+
+    stride = 1
+    axis = i32(len(shape)) - 1
+    while axis >= 0:
+        strides[axis] = stride
+        stride *= shape[axis]
+        axis -= 1
+    return strides
+
+
+def offset_for_indices(base: i32, strides: list[i32], indices: list[i32]) -> i32:
+    out = base
+    axis = 0
+    while axis < i32(len(indices)):
+        out += indices[axis] * strides[axis]
+        axis += 1
+    return out
+
+
+def offset_from_flat(base: i32, shape: list[i32], strides: list[i32], flat: i32) -> i32:
+    out = base
+    axis = i32(len(shape)) - 1
+    rest = flat
+    while axis >= 0:
+        extent = shape[axis]
+        coord = 0
+        if extent > 0:
+            coord = rest % extent
+            rest = rest / extent
+        out += coord * strides[axis]
+        axis -= 1
+    return out
+
+
+class CartesianIndexer[T]:
+    data: *list[T]
+    shape: list[i32]
+    strides: list[i32]
+
+    @operator("[]")
+    def cartesian(self, rows: IndexArray, cols: IndexArray) -> Tensor[T]:
+        out = empty_like[T](rows.count(), cols.count())
+        row = 0
+        while row < rows.count():
+            col = 0
+            while col < cols.count():
+                out[row, col] = (*self.data)[offset_for_indices(0, self.strides, index2(rows[row], cols[col]))]
+                col += 1
+            row += 1
+        return out
+
+    @operator("[]=")
+    def set_cartesian(self, rows: IndexArray, cols: IndexArray, values: Tensor[T]):
+        row = 0
+        while row < rows.count():
+            col = 0
+            while col < cols.count():
+                (*self.data)[offset_for_indices(0, self.strides, index2(rows[row], cols[col]))] = values[row, col]
+                col += 1
+            row += 1
+
+
+class WindowTiles[T]:
+    data: *list[T]
+    shape: list[i32]
+    strides: list[i32]
+    tile_rows: i32
+    tile_cols: i32
+
+    @operator("[]")
+    def tile(self, row: i32, col: i32) -> Tensor[T]:
+        out = empty_like[T](self.tile_rows, self.tile_cols)
+        tile_row = 0
+        while tile_row < self.tile_rows:
+            tile_col = 0
+            while tile_col < self.tile_cols:
+                source_row = row + tile_row
+                source_col = col + tile_col
+                out[tile_row, tile_col] = (*self.data)[offset_for_indices(0, self.strides, index2(source_row, source_col))]
+                tile_col += 1
+            tile_row += 1
+        return out
+
+
+class TensorWindow[T]:
+    data: *list[T]
+    shape: list[i32]
+    strides: list[i32]
+
+    @operator("[]")
+    def tiles(self, tile_rows: i32, tile_cols: i32) -> WindowTiles[T]:
+        return WindowTiles[T](self.data, self.shape, self.strides, tile_rows, tile_cols)
+
+
+class TensorView[T]:
+    data: *list[T]
+    offset: i32
+    shape: list[i32]
+    strides: list[i32]
+
+    def init(self, data: *list[T], offset: i32, shape: list[i32], strides: list[i32]):
+        self.data = data
+        self.offset = offset
+        self.shape = copy_shape(shape)
+        self.strides = copy_shape(strides)
+
+    def dim(self, axis: i32) -> i32:
+        return shape_dim(self.shape, axis)
+
+    def count(self) -> i32:
+        return shape_total(self.shape)
+
+    @operator("[]")
+    def at_scalar(self, *idx: scalar_index) -> T:
+        offset: i32 = cpp("ddtensor::element_offset(self.shape, self.strides, self.offset, idx...)")
+        return (*self.data)[offset]
+
+    @operator("[]=")
+    def set_scalar(self, *idx: scalar_index, value: T):
+        offset: i32 = cpp("ddtensor::element_offset(self.shape, self.strides, self.offset, idx...)")
+        (*self.data)[offset] = value
+
+    @operator("[]")
+    def view_at(self, *idx: basic_index) -> TensorView[T]:
+        plan = cpp("ddtensor::index_plan(self.shape, self.strides, self.offset, idx...)")
+        shape: list[i32] = cpp("plan.shape")
+        strides: list[i32] = cpp("plan.strides")
+        offset: i32 = cpp("plan.offset")
+        return TensorView[T](self.data, offset, shape, strides)
+
+    def fill(self, value: T):
+        cpp("ddtensor::fill_view((*self.data), self.shape, self.strides, self.offset, value);")
+
+    def to_tensor(self) -> Tensor[T]:
+        data: list[T] = cpp("ddtensor::materialize_view((*self.data), self.shape, self.strides, self.offset)")
+        return from_shape[T](self.shape, data)
+
+    @operator("+")
+    def add_scalar(self, value: T) -> Tensor[T]:
+        out = self.to_tensor()
+        i = 0
+        while i < i32(len(out.data)):
+            out.data[i] = out.data[i] + value
+            i += 1
+        return out
+
+
+class Tensor[T]:
+    offset: i32
+    shape: list[i32]
+    strides: list[i32]
+    data: list[T]
+    cartesian: CartesianIndexer[T]
+    window: TensorWindow[T]
+
+    def init(self, rows: i32, cols: i32, data: list[T]):
+        self.offset = 0
+        self.shape = shape2(rows, cols)
+        self.strides = contiguous_strides(self.shape)
+        self.data = data
+        self.cartesian = CartesianIndexer[T](&self.data, self.shape, self.strides)
+        self.window = TensorWindow[T](&self.data, self.shape, self.strides)
+
+    def dim(self, axis: i32) -> i32:
+        return shape_dim(self.shape, axis)
+
+    def count(self) -> i32:
+        return shape_total(self.shape)
+
+    @operator("[]")
+    def at_scalar(self, *idx: scalar_index) -> T:
+        offset: i32 = cpp("ddtensor::element_offset(self.shape, self.strides, self.offset, idx...)")
+        return self.data[offset]
+
+    @operator("[]=")
+    def set_scalar(self, *idx: scalar_index, value: T):
+        offset: i32 = cpp("ddtensor::element_offset(self.shape, self.strides, self.offset, idx...)")
+        self.data[offset] = value
+
+    @operator("[]")
+    def pairwise(self, rows: IndexArray, cols: IndexArray) -> Tensor[T]:
+        count = rows.count()
+        out = empty_shape[T](index1(count))
+        i = 0
+        while i < count:
+            out[i] = self.data[offset_for_indices(self.offset, self.strides, index2(rows[i], cols[i]))]
+            i += 1
+        return out
+
+    @operator("[]=")
+    def set_pairwise(self, rows: IndexArray, cols: IndexArray, values: Tensor[T]):
+        count = rows.count()
+        i = 0
+        while i < count:
+            self.data[offset_for_indices(self.offset, self.strides, index2(rows[i], cols[i]))] = values[i]
+            i += 1
+
+    @operator("[]")
+    def view_at(self, *idx: basic_index) -> TensorView[T]:
+        plan = cpp("ddtensor::index_plan(self.shape, self.strides, self.offset, idx...)")
+        shape: list[i32] = cpp("plan.shape")
+        strides: list[i32] = cpp("plan.strides")
+        offset: i32 = cpp("plan.offset")
+        return TensorView[T](&self.data, offset, shape, strides)
+
+    @operator("[]")
+    def masked_rows(self, mask: Mask, cols: slice) -> Tensor[T]:
+        col_start = slice_start(cols)
+        col_step = slice_step(cols)
+        col_count = slice_count(cols, self.dim(1))
+        out = empty_like[T](mask.count_true(), col_count)
+        out_row = 0
+        row = 0
+        while row < mask.count():
+            if mask[row]:
+                col = 0
+                while col < col_count:
+                    out[out_row, col] = self[row, col_start + (col * col_step)]
+                    col += 1
+                out_row += 1
+            row += 1
+        return out
+
+    @operator("[]=")
+    def set_masked_rows(self, mask: Mask, cols: slice, values: Tensor[T]):
+        col_start = slice_start(cols)
+        col_step = slice_step(cols)
+        col_count = slice_count(cols, self.dim(1))
+        value_row = 0
+        row = 0
+        while row < mask.count():
+            if mask[row]:
+                col = 0
+                while col < col_count:
+                    self[row, col_start + (col * col_step)] = values[value_row, col]
+                    col += 1
+                value_row += 1
+            row += 1
+
+    @operator("+")
+    def add(self, other: Tensor[T]) -> Tensor[T]:
+        out = empty_like[T](self.dim(0), self.dim(1))
+        row = 0
+        while row < self.dim(0):
+            col = 0
+            while col < self.dim(1):
+                right_row = row
+                if other.dim(0) == 1:
+                    right_row = 0
+                right_col = col
+                if other.dim(1) == 1:
+                    right_col = 0
+                out[row, col] = self[row, col] + other[right_row, right_col]
+                col += 1
+            row += 1
+        return out
+
+    @operator("+")
+    def add_scalar(self, value: T) -> Tensor[T]:
+        out = empty_like[T](self.dim(0), self.dim(1))
+        row = 0
+        while row < self.dim(0):
+            col = 0
+            while col < self.dim(1):
+                out[row, col] = self[row, col] + value
+                col += 1
+            row += 1
+        return out
+
+    @operator("[]=")
+    def set_column_view(self, rows: slice, col: i32, values: Tensor[T]):
+        row_start = slice_start(rows)
+        row_step = slice_step(rows)
+        row_count = slice_count(rows, self.dim(0))
+        row = 0
+        while row < row_count:
+            self[row_start + (row * row_step), col] = values[row]
+            row += 1
+
+    def to_tensor(self) -> Tensor[T]:
+        data: list[T] = cpp("ddtensor::materialize_view(self.data, self.shape, self.strides, self.offset)")
+        return from_shape[T](self.shape, data)
+
+    def as_array_view(self) -> TensorView[T]:
+        return TensorView[T](&self.data, self.offset, self.shape, self.strides)
+
+    def to_array(self) -> Tensor[T]:
+        out = empty_like[T](self.dim(0), self.dim(1))
+        row = 0
+        while row < self.dim(0):
+            col = 0
+            while col < self.dim(1):
+                out[row, col] = self[row, col]
+                col += 1
+            row += 1
+        return out
+
+    def assume_shape[Rows, Cols](self) -> Tensor[T][Rows, Cols]:
+        return from_shape[T](self.shape, self.data)
+
+    def to(self, device: CpuDevice) -> Tensor[T]:
+        return from_shape[T](self.shape, self.data)
+
+    def to(self, device: OpenBlasDevice) -> Tensor[T]:
+        return from_shape[T](self.shape, self.data)
+
+    def cpu(self) -> Tensor[T]:
+        return from_shape[T](self.shape, self.data)
+
+    def matmul(self, right: Tensor[T]) -> Tensor[T]:
+        out = empty_like[T](self.dim(0), right.dim(1))
+        row = 0
+        while row < self.dim(0):
+            col = 0
+            while col < right.dim(1):
+                acc: T = T(0)
+                k = 0
+                while k < self.dim(1):
+                    acc += self[row, k] * right[k, col]
+                    k += 1
+                out[row, col] = acc
+                col += 1
+            row += 1
+        return out
+
+    def binary_accuracy(self, expected: Tensor[T]) -> f32:
+        matches = 0
+        total = self.dim(0) * self.dim(1)
+        row = 0
+        while row < self.dim(0):
+            col = 0
+            while col < self.dim(1):
+                predicted_positive = self[row, col] >= T(0.5)
+                expected_positive = expected[row, col] >= T(0.5)
+                if predicted_positive == expected_positive:
+                    matches += 1
+                col += 1
+            row += 1
+        if total == 0:
+            return 0.0
+        return f32(matches) / f32(total)
+
+def slice_start(value: slice) -> i32:
+    if value.has_start:
+        return i32(value.start)
+    return 0
+
+
+def slice_end(value: slice, limit: i32) -> i32:
+    if value.has_end:
+        return i32(value.end)
+    return limit
+
+
+def slice_step(value: slice) -> i32:
+    if value.has_step:
+        return i32(value.step)
+    return 1
+
+
+def slice_count(value: slice, limit: i32) -> i32:
+    start = slice_start(value)
+    stop = slice_end(value, limit)
+    step = slice_step(value)
+    if stop <= start:
+        return 0
+    return ((stop - start) + step - 1) / step
+
+
+def index_array(values: list[i32]) -> IndexArray:
+    data: list[i32] = []
+    i = 0
+    while i < i32(len(values)):
+        data.append(values[i])
+        i += 1
+    return IndexArray(data)
+
+
+def bool_mask(values: list[bool]) -> Mask:
+    data: list[bool] = []
+    i = 0
+    while i < i32(len(values)):
+        data.append(values[i])
+        i += 1
+    return Mask(data)
+
+
+def empty_like[T](rows: i32, cols: i32) -> Tensor[T]:
+    data: list[T] = []
+    i = 0
+    while i < rows * cols:
+        data.append(T(0))
+        i += 1
+    return Tensor[T](rows, cols, data)
+
+
+def empty_shape[T](shape: list[i32]) -> Tensor[T]:
+    data: list[T] = []
+    i = 0
+    total = shape_total(shape)
+    while i < total:
+        data.append(T(0))
+        i += 1
+    return from_shape[T](shape, data)
+
+
+def zeros[T](rows: i32, cols: i32) -> Tensor[T]:
+    return full[T](rows, cols, T(0))
+
+
+def ones[T](rows: i32, cols: i32) -> Tensor[T]:
+    return full[T](rows, cols, T(1))
+
+
+def full[T](rows: i32, cols: i32, value: T) -> Tensor[T]:
+    data: list[T] = []
+    i = 0
+    while i < rows * cols:
+        data.append(value)
+        i += 1
+    return Tensor[T](rows, cols, data)
+
+
+def arange[T](rows: i32, cols: i32) -> Tensor[T]:
+    data: list[T] = []
+    i = 0
+    while i < rows * cols:
+        data.append(T(i))
+        i += 1
+    return Tensor[T](rows, cols, data)
+
+
+def from_shape[T](shape: list[i32], values: list[T]) -> Tensor[T]:
+    rows = shape_dim(shape, 0)
+    cols = shape_dim(shape, 1)
+    out = Tensor[T](rows, cols, values)
+    out.shape = copy_shape(shape)
+    out.strides = contiguous_strides(out.shape)
+    out.offset = 0
+    out.cartesian = CartesianIndexer[T](&out.data, out.shape, out.strides)
+    out.window = TensorWindow[T](&out.data, out.shape, out.strides)
+    return out
+
+
+def arange_shape[T](shape: list[i32]) -> Tensor[T]:
+    data: list[T] = []
+    i = 0
+    total = shape_total(shape)
+    while i < total:
+        data.append(T(i))
+        i += 1
+    return from_shape[T](shape, data)
+
+
+def from_list[T](values: list[T]) -> Tensor[T]:
+    data: list[T] = []
+    i = 0
+    total = i32(len(values))
+    while i < total:
+        data.append(values[i])
+        i += 1
+    return from_shape[T](index1(total), data)
+
+
+def from_nested[T](values: list[list[T]]) -> Tensor[T]:
+    rows = i32(len(values))
+    cols = 0
+    if rows > 0:
+        cols = i32(len(values[0]))
+    out = empty_like[T](rows, cols)
+    row = 0
+    while row < rows:
+        col = 0
+        while col < cols:
+            out[row, col] = values[row][col]
+            col += 1
+        row += 1
+    return out
+
+
+def clone[T](input: &Tensor[T]) -> Tensor[T]:
+    out = empty_like[T](input.dim(0), input.dim(1))
+    row = 0
+    while row < input.dim(0):
+        col = 0
+        while col < input.dim(1):
+            out[row, col] = input[row, col]
+            col += 1
+        row += 1
+    return out
+
+
+def add(left: Tensor[f32], right: Tensor[f32]) -> Tensor[f32]:
+    out = zeros[f32](left.dim(0), left.dim(1))
+    row = 0
+    while row < left.dim(0):
+        col = 0
+        while col < left.dim(1):
+            right_row = row
+            if right.dim(0) == 1:
+                right_row = 0
+            right_col = col
+            if right.dim(1) == 1:
+                right_col = 0
+            out[row, col] = left[row, col] + right[right_row, right_col]
+            col += 1
+        row += 1
+    return out
+
+
+def scale(input: Tensor[f32], factor: f32) -> Tensor[f32]:
+    out = zeros[f32](input.dim(0), input.dim(1))
+    row = 0
+    while row < input.dim(0):
+        col = 0
+        while col < input.dim(1):
+            out[row, col] = input[row, col] * factor
+            col += 1
+        row += 1
+    return out
+
+
+def randn[T](rows: i32, cols: i32, scale_value: T) -> Tensor[T]:
+    out = empty_like[T](rows, cols)
+    i = 0
+    while i < rows * cols:
+        bucket = ((i * 37 + 17) % 23) - 11
+        out.data[i] = T(bucket) * scale_value
+        i += 1
+    return out
+
+
+def relu(input: Tensor[f32]) -> Tensor[f32]:
+    out = zeros[f32](input.dim(0), input.dim(1))
+    row = 0
+    while row < input.dim(0):
+        col = 0
+        while col < input.dim(1):
+            value = input[row, col]
+            if value < 0.0:
+                value = 0.0
+            out[row, col] = value
+            col += 1
+        row += 1
+    return out
+
+
+def sigmoid(input: Tensor[f32]) -> Tensor[f32]:
+    out = zeros[f32](input.dim(0), input.dim(1))
+    row = 0
+    while row < input.dim(0):
+        col = 0
+        while col < input.dim(1):
+            out[row, col] = f32(1.0 / (1.0 + exp(0.0 - input[row, col])))
+            col += 1
+        row += 1
+    return out
+
+
+def mse_loss(predicted: Tensor[f32], expected: Tensor[f32]) -> Tensor[f32]:
+    total: f32 = 0.0
+    count = predicted.dim(0) * predicted.dim(1)
+    row = 0
+    while row < predicted.dim(0):
+        col = 0
+        while col < predicted.dim(1):
+            diff = predicted[row, col] - expected[row, col]
+            total += diff * diff
+            col += 1
+        row += 1
+    if count == 0:
+        return from_list[f32]([0.0])
+    return from_list[f32]([total / f32(count)])
+
+
+def matmul(left: Tensor[f32], right: Tensor[f32]) -> Tensor[f32]:
+    return left.matmul(right)
+
+
+def matmul_openblas(left: Tensor[f32], right: Tensor[f32]) -> Tensor[f32]:
+    out = zeros[f32](left.dim(0), right.dim(1))
+    blas.cblas_sgemm(
+        blas.CblasRowMajor,
+        blas.CblasNoTrans,
+        blas.CblasNoTrans,
+        left.dim(0),
+        right.dim(1),
+        left.dim(1),
+        1.0,
+        &left.data[0],
+        left.dim(1),
+        &right.data[0],
+        right.dim(1),
+        0.0,
+        &out.data[0],
+        out.dim(1),
+    )
+    return out
+
+
+def sum_values(input: Tensor[f32]) -> f32:
+    total: f32 = 0.0
+    row = 0
+    while row < input.dim(0):
+        col = 0
+        while col < input.dim(1):
+            total += input[row, col]
+            col += 1
+        row += 1
+    return total
+
+
+def sum_view(input: TensorView[f32]) -> f32:
+    total: f32 = 0.0
+    row = 0
+    while row < input.dim(0):
+        col = 0
+        while col < input.dim(1):
+            total += input[row, col]
+            col += 1
+        row += 1
+    return total
+
+
+def print_tensor(label: str, input: Tensor[f32]):
+    print(label)
+    flat = input.to_tensor()
+    i = 0
+    while i < i32(len(flat.data)):
+        print(flat.data[i])
+        i += 1
+
+
+def assert_close(actual: f32, expected: f32):
+    diff = actual - expected
+    if diff < 0.0:
+        diff = 0.0 - diff
+    assert diff <= 0.001, "tensor scalar mismatch"
+
+
+def assert_close(actual: Tensor[f32], expected: Tensor[f32]):
+    assert_tensor_close(actual, expected)
+
+
+def assert_close(actual: TensorView[f32], expected: Tensor[f32]):
+    assert_view_close(actual, expected)
+
+
+def assert_tensor_close(actual: Tensor[f32], expected: Tensor[f32]):
+    if i32(len(actual.shape)) != i32(len(expected.shape)):
+        assert False, "tensor shape mismatch"
+    axis = 0
+    while axis < i32(len(actual.shape)):
+        if actual.shape[axis] != expected.shape[axis]:
+            assert False, "tensor shape mismatch"
+        axis += 1
+    actual_contiguous = actual.to_tensor()
+    expected_contiguous = expected.to_tensor()
+    i = 0
+    while i < i32(len(actual_contiguous.data)):
+        assert_close(actual_contiguous.data[i], expected_contiguous.data[i])
+        i += 1
+
+
+def assert_view_close(actual: TensorView[f32], expected: Tensor[f32]):
+    assert_tensor_close(actual.to_tensor(), expected)

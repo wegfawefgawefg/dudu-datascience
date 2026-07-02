@@ -1,10 +1,10 @@
-from dudu_tensor import Tensor
-from dudu_tensor import arange
-from dudu_tensor import assert_close
-from dudu_tensor import full
-from dudu_tensor import ones
-from dudu_tensor import print_tensor
-from dudu_tensor import zeros
+from ndad import Tensor
+from ndad import arange
+from ndad import assert_close
+from ndad import full
+from ndad import ones
+from ndad import print_tensor
+from ndad import zeros
 
 
 def main() -> i32:

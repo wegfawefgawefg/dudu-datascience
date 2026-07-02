@@ -1,11 +1,11 @@
-from dudu_tensor import Tensor
-from dudu_tensor import arange
-from dudu_tensor import assert_close
-from dudu_tensor import bool_mask
-from dudu_tensor import from_list
-from dudu_tensor import from_nested
-from dudu_tensor import index_array
-from dudu_tensor import print_tensor
+from ndad import Tensor
+from ndad import arange
+from ndad import assert_close
+from ndad import bool_mask
+from ndad import from_list
+from ndad import from_nested
+from ndad import index_array
+from ndad import print_tensor
 
 
 def main() -> i32:

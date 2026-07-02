@@ -31,10 +31,11 @@ To verify the target API status:
 Graduated target API files have named `dudu` targets and must run. Pending
 files stay listed with an explicit missing implementation reason.
 
-The current reusable tensor module links both OpenBLAS and OpenCL because the
-GPU backend lives in the same `dudu_tensor` module as the CPU tensor surface.
-That keeps the dogfood API direct while Dudu grows cleaner extension-module
-boundaries.
+The reusable CPU/OpenBLAS tensor module is `ndad`. The optional OpenCL demo
+still uses the older `dudu_tensor` prototype until Dudu has cleaner extension
+module boundaries for adding backend-specific methods outside the core package.
+The pending autograd target sketches `mald`, an ML layer intended to sit on top
+of `ndad` rather than inside the tensor storage package.
 
 ## Demos
 
@@ -72,7 +73,8 @@ boundaries.
 - pure Dudu row-major matmul compared against `blas.cblas_sgemm`
 - explicit CPU-contiguous storage boundary through `&tensor.data[0]`
 
-`src/target_gpu_backend.dd` graduates the OpenCL target API:
+`src/target_gpu_backend.dd` keeps the OpenCL target API as an optional backend
+dogfood target:
 
 - `host_tensor.to(opencl.default())` uploads CPU tensor storage
 - `gpu_tensor.matmul(other_gpu_tensor)` runs an OpenCL kernel
@@ -82,8 +84,8 @@ boundaries.
 
 `src/backend_surface_demo.dd` shows the target backend boundary shape:
 
-- backend marker imports with `from dudu_tensor.backends import cpu`
-  and `from dudu_tensor.backends import openblas`
+- backend marker imports with `from ndad.backends import cpu`
+  and `from ndad.backends import openblas`
 - `tensor.to(cpu.default())`, `tensor.to(openblas.default())`, and `tensor.cpu()`
 - explicit `as_array_view()` and `to_array()` materialization boundaries
 
@@ -95,7 +97,7 @@ runnable check:
 - `logits.cpu()`, `as_array_view()`, and `to_array()` boundary checks
 
 `src/advanced_indexing_demo.dd` graduates the first advanced-indexing target
-slice into reusable `dudu_tensor` code:
+slice into reusable `ndad` code:
 
 - `index_array([...])` and `bool_mask([...])`
 - pairwise gather/scatter: `logits[rows, cols]`
@@ -140,7 +142,7 @@ src/blas_demos.dd    OpenBLAS-backed matrix multiply
 src/hook_demos.dd    user-defined indexing operators
 src/shape_stride_demo.dd rank-3/rank-4 shape-stride view checks
 src/tensor_demos.dd  small tensor-style mask demo
-src/dudu_tensor.dd   reusable Tensor/TensorView/indexer slice
+src/ndad.dd          reusable Tensor/TensorView/indexer slice
 src/print_utils.dd   tiny print helpers
 spec/target_api/     target API examples plus graduated/pending manifest
 ```
