@@ -1,0 +1,49 @@
+from mald import Parameter
+from mald.datasets import xor_inputs
+from mald.datasets import or_targets
+from mald.losses import linear_mse_loss
+from mald.optim import sgd
+from ndad import Tensor
+from ndad import from_nested
+from ndad import zeros
+
+
+class LinearClassifier:
+    weights: Parameter[f32][2, 1]
+    bias: Parameter[f32][1, 1]
+
+    @operator("()")
+    def forward(self, x: Tensor[f32][dyn, 2]) -> Tensor[f32][dyn, 1]:
+        return x.matmul(self.weights.value) + self.bias.value
+
+    def parameters(self) -> list[*Parameter[f32]]:
+        params: list[*Parameter[f32]] = []
+        params.append(&self.weights)
+        params.append(&self.bias)
+        return params
+
+
+def main() -> i32:
+    x = xor_inputs[f32]()
+    y = or_targets[f32]()
+    model = LinearClassifier(
+        Parameter[f32](from_nested[f32]([
+            [0.0],
+            [0.0],
+        ])),
+        Parameter[f32](zeros[f32](1, 1)),
+    )
+    opt = sgd(model.parameters(), 0.4)
+
+    epoch = 0
+    while epoch < 160:
+        loss = linear_mse_loss(x, y, &model.weights, &model.bias)
+        loss.backward()
+        opt.step()
+        opt.zero_grad()
+        epoch += 1
+
+    final_pred = model(x)
+    if final_pred.binary_accuracy(y) < 1.0:
+        return 1
+    return 0

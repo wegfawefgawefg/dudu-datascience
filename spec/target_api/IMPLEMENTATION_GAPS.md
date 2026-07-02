@@ -179,28 +179,20 @@ policy; the compiler should only preserve enough type facts for diagnostics.
 
 ## 7. Autograd Prototype
 
-`autograd_training.dd` sketches `mald`, the intended ML/autograd layer on top
-of `ndad`. It requires:
+`autograd_training.dd` has graduated into `src/target_autograd_training.dd`.
+The runnable `mald` layer now proves that Dudu can express a package-shaped ML
+surface on top of `ndad` without compiler/library-name special cases:
 
-- `Parameter[T][shape]`
-- `Module` or equivalent parameter-owning base/trait
-- modules callable as `model(x)` through `@operator("()")` while still allowing
-  the method to be named `forward`
-- parameters usable directly in tensor operations
-- internally tracked tensor operations
-- `loss.backward()`
-- SGD optimizer
-- autograd-aware loss/activation helpers
+- `Parameter[T]` owns value and gradient tensors
+- `Loss.backward()` writes computed gradients back to parameters
+- `SGD.step()` and `SGD.zero_grad()` update parameters through pointers
+- callable model objects use `@operator("()")`
+- the target trains a tiny OR classifier through normal Dudu code
 
-This should feel PyTorch-like at the user level. Tape/graph bookkeeping may
-exist inside the library, but target user code should not instantiate a public
-`Tape` just to train a model. The compiler should only need normal classes,
-enums, references, generics, operator overloads, and diagnostics.
-
-The runnable library now provides non-autograd `randn`, `relu`, `sigmoid`,
-`mse_loss`, and `Tensor.binary_accuracy` in `src/activation_metrics_demo.dd`.
-Those helpers are reusable for forward-only demos; training still needs the
-parameter and graph pieces above.
+This is intentionally a minimal autograd proof. Full dynamic graph capture,
+view/scatter backward rules, activation-aware backward helpers, and richer
+module hierarchies remain library work. The compiler should only need normal
+classes, enums, references, generics, operator overloads, and diagnostics.
 
 ## 8. Editor And Diagnostics
 

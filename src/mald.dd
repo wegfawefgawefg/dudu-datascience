@@ -1,0 +1,66 @@
+from ndad import Tensor
+from ndad import zeros
+
+
+class Parameter[T]:
+    value: Tensor[T]
+    grad: Tensor[T]
+
+    def init(self):
+        self.value = Tensor[T]()
+        self.grad = Tensor[T]()
+
+    def init(self, value: Tensor[T]):
+        self.value = value
+        self.grad = zeros[T](value.dim(0), value.dim(1))
+
+    def tensor(self) -> Tensor[T]:
+        return self.value
+
+    def rows(self) -> i32:
+        return self.value.dim(0)
+
+    def cols(self) -> i32:
+        return self.value.dim(1)
+
+    def zero_grad(self):
+        self.grad = zeros[T](self.value.dim(0), self.value.dim(1))
+
+    def set_grad(self, grad: Tensor[T]):
+        self.grad = grad
+
+    def step(self, rate: T):
+        row = 0
+        while row < self.value.dim(0):
+            col = 0
+            while col < self.value.dim(1):
+                self.value[row, col] -= rate * self.grad[row, col]
+                col += 1
+            row += 1
+
+
+class Module:
+    def parameters(self) -> list[*Parameter[f32]]:
+        params: list[*Parameter[f32]] = []
+        return params
+
+
+class Loss:
+    value: Tensor[f32]
+    params: list[*Parameter[f32]]
+    grads: list[Tensor[f32]]
+
+    def init(self, value: Tensor[f32], params: list[*Parameter[f32]], grads: list[Tensor[f32]]):
+        self.value = value
+        self.params = params
+        self.grads = grads
+
+    def item(self) -> f32:
+        return self.value[0]
+
+    def backward(self):
+        i = 0
+        while i < i32(len(self.params)):
+            param = self.params[i]
+            param.set_grad(self.grads[i])
+            i += 1

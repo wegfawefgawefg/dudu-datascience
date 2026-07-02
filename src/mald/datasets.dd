@@ -1,0 +1,20 @@
+from ndad import Tensor
+from ndad import from_nested
+
+
+def xor_inputs[T]() -> Tensor[T]:
+    values: list[list[T]] = []
+    values.append([T(0), T(0)])
+    values.append([T(0), T(1)])
+    values.append([T(1), T(0)])
+    values.append([T(1), T(1)])
+    return from_nested[T](values)
+
+
+def or_targets[T]() -> Tensor[T]:
+    values: list[list[T]] = []
+    values.append([T(0)])
+    values.append([T(1)])
+    values.append([T(1)])
+    values.append([T(1)])
+    return from_nested[T](values)

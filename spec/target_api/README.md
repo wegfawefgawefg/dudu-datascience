@@ -24,8 +24,6 @@ Current graduated targets:
 - `advanced_indexing.dd` -> `dudu run target_advanced_indexing`
 - `blas_backend.dd` -> `dudu run target_blas_backend`
 - `gpu_backend.dd` -> `dudu run target_gpu_backend`
+- `autograd_training.dd` -> `dudu run target_autograd_training`
 
-Current pending targets:
-
-- `autograd_training.dd`: callable modules use Dudu's `@operator("()")`;
-  the remaining work is autograd modules, parameters, backward, and optimizers
+Current pending targets: none.

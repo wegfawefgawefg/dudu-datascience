@@ -1,0 +1,28 @@
+from mald import Parameter
+
+
+class SGD:
+    params: list[*Parameter[f32]]
+    rate: f32
+
+    def init(self, params: list[*Parameter[f32]], rate: f32):
+        self.params = params
+        self.rate = rate
+
+    def step(self):
+        i = 0
+        while i < i32(len(self.params)):
+            param = self.params[i]
+            param.step(self.rate)
+            i += 1
+
+    def zero_grad(self):
+        i = 0
+        while i < i32(len(self.params)):
+            param = self.params[i]
+            param.zero_grad()
+            i += 1
+
+
+def sgd(params: list[*Parameter[f32]], rate: f32) -> SGD:
+    return SGD(params, rate)

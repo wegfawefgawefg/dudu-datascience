@@ -34,8 +34,8 @@ files stay listed with an explicit missing implementation reason.
 The reusable CPU/OpenBLAS tensor module is `ndad`. The optional OpenCL demo
 still uses the older `dudu_tensor` prototype until Dudu has cleaner extension
 module boundaries for adding backend-specific methods outside the core package.
-The pending autograd target sketches `mald`, an ML layer intended to sit on top
-of `ndad` rather than inside the tensor storage package.
+The `mald` package is a small ML layer on top of `ndad`, with parameters,
+losses, backward plumbing, and SGD kept outside the tensor storage package.
 
 ## Demos
 
@@ -124,6 +124,14 @@ slice:
 - scalar loss tensor: `mse_loss(predicted, expected)`
 - metric method: `predicted.binary_accuracy(expected)`
 
+`src/target_autograd_training.dd` graduates the first `mald` training target:
+
+- `Parameter[T]` owns value and gradient tensors
+- `Loss.backward()` writes computed gradients back to parameters
+- `SGD.step()` and `SGD.zero_grad()` update parameters through pointers
+- a callable `LinearClassifier` trains a tiny OR classifier through normal
+  Dudu classes, operator overloads, lists, and tensor APIs
+
 The BLAS demo needs `openblas` discoverable through `pkg-config`.
 
 Each section prints the intended result and the actual computed result. The
@@ -140,6 +148,8 @@ src/backend_surface_demo.dd backend marker and materialization boundaries
 src/blas_backend_demo.dd target-style BLAS backend boundary
 src/blas_demos.dd    OpenBLAS-backed matrix multiply
 src/hook_demos.dd    user-defined indexing operators
+src/mald.dd          small ML/autograd package layer
+src/mald/            datasets, losses, and optimizers
 src/shape_stride_demo.dd rank-3/rank-4 shape-stride view checks
 src/tensor_demos.dd  small tensor-style mask demo
 src/ndad.dd          reusable Tensor/TensorView/indexer slice

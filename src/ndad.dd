@@ -209,6 +209,12 @@ class TensorView[T]:
     shape: list[i32]
     strides: list[i32]
 
+    def init(self):
+        self.data = None
+        self.offset = 0
+        self.shape = []
+        self.strides = []
+
     def init(self, data: *list[T], offset: i32, shape: list[i32], strides: list[i32]):
         self.data = data
         self.offset = offset
@@ -263,6 +269,14 @@ class Tensor[T]:
     data: list[T]
     cartesian: CartesianIndexer[T]
     window: TensorWindow[T]
+
+    def init(self):
+        self.offset = 0
+        self.shape = []
+        self.strides = []
+        self.data = []
+        self.cartesian = CartesianIndexer[T](&self.data, self.shape, self.strides)
+        self.window = TensorWindow[T](&self.data, self.shape, self.strides)
 
     def init(self, rows: i32, cols: i32, data: list[T]):
         self.offset = 0

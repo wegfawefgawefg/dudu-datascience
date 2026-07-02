@@ -3,6 +3,7 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 manifest="$repo_root/spec/target_api/manifest.tsv"
+dudu_bin="${DUDU_BIN:-dudu}"
 
 cd "$repo_root"
 
@@ -23,7 +24,7 @@ while IFS=$'\t' read -r file status evidence; do
                 exit 1
             fi
             printf '[target-api] run %s for %s\n' "$evidence" "$file" >&2
-            dudu run "$evidence" >/tmp/dudu-datascience-"$evidence".out
+            "$dudu_bin" run "$evidence" >/tmp/dudu-datascience-"$evidence".out
             graduated=$((graduated + 1))
             ;;
         pending)

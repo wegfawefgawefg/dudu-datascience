@@ -1,0 +1,47 @@
+from mald import Loss
+from mald import Parameter
+from ndad import Tensor
+from ndad import mse_loss
+from ndad import zeros
+
+
+def linear_mse_loss(
+    inputs: Tensor[f32],
+    expected: Tensor[f32],
+    weights: *Parameter[f32],
+    bias: *Parameter[f32],
+) -> Loss:
+    weight_value = weights.tensor()
+    bias_value = bias.tensor()
+    predicted = inputs.matmul(weight_value) + bias_value
+    loss_value = mse_loss(predicted, expected)
+    weight_rows = weights.rows()
+    weight_cols = weights.cols()
+    bias_rows = bias.rows()
+    bias_cols = bias.cols()
+    weight_grad = zeros[f32](weight_rows, weight_cols)
+    bias_grad = zeros[f32](bias_rows, bias_cols)
+
+    count = inputs.dim(0)
+    row = 0
+    while row < count:
+        diff = predicted[row, 0] - expected[row, 0]
+        grad_pred = (2.0 * diff) / f32(count)
+
+        col = 0
+        while col < inputs.dim(1):
+            weight_grad[col, 0] += inputs[row, col] * grad_pred
+            col += 1
+
+        bias_grad[0, 0] += grad_pred
+        row += 1
+
+    params: list[*Parameter[f32]] = []
+    params.append(weights)
+    params.append(bias)
+
+    grads: list[Tensor[f32]] = []
+    grads.append(weight_grad)
+    grads.append(bias_grad)
+
+    return Loss(loss_value, params, grads)

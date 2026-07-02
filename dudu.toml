@@ -27,3 +27,6 @@ entry = "src/target_gpu_backend.dd"
 
 [targets.target_gpu_backend.pkg]
 libs = ["OpenCL"]
+
+[targets.target_autograd_training]
+entry = "src/target_autograd_training.dd"
