@@ -68,7 +68,7 @@ def array_conv2d_demo() -> i32:
         [1.0, 0.0, -1.0],
     ]
 
-    out = apply_conv2d[4, 4, 3](image, kernel)
+    out = apply_conv2d(image, kernel)
 
     show_f32("array conv[0, 0]", -6.0, out[0, 0])
     show_f32("array conv[0, 1]", -6.0, out[0, 1])
@@ -93,7 +93,7 @@ def run_convolution_shape_demo() -> i32:
         [1.0, 0.0, -1.0],
     ])
 
-    out = conv2d_valid[4, 4, 3](image, kernel)
+    out = conv2d_valid(image, kernel)
     print_tensor("conv2d output", out)
 
     show_i32("conv2d output rows", 2, out.dim(0))
